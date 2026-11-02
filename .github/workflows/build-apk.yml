@@ -1,3 +1,4 @@
+
 name: Build GROW CAPITAL APK
 
 on:
@@ -18,6 +19,9 @@ jobs:
         uses: subosito/flutter-action@v2
         with:
           channel: stable
+
+      - name: Generate Android Platform
+        run: flutter create --platforms=android --project-name grow_capital .
 
       - name: Install dependencies
         run: flutter pub get
