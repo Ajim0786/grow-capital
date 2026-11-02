@@ -1,0 +1,8 @@
+grow-capital/
+├── pubspec.yaml
+├── README.md
+└── lib/
+    ├── main.dart
+    ├── app.dart
+    └── screens/
+        └── home_screen.dart
