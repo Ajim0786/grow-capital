@@ -23,8 +23,16 @@ jobs:
 
       - name: Configure Firebase
         run: |
-          sed -i '/^plugins {/a\    id "com.google.gms.google-services" version "4.4.2" apply false' android/settings.gradle
-          sed -i '/^plugins {/a\    id "com.google.gms.google-services"' android/app/build.gradle
+          if [ -f android/settings.gradle.kts ]; then
+            sed -i '/^plugins {/a\    id("com.google.gms.google-services") version "4.4.2" apply false' android/settings.gradle.kts
+            sed -i '/^plugins {/a\    id("com.google.gms.google-services")' android/app/build.gradle.kts
+          elif [ -f android/settings.gradle ]; then
+            sed -i '/^plugins {/a\    id "com.google.gms.google-services" version "4.4.2" apply false' android/settings.gradle
+            sed -i '/^plugins {/a\    id "com.google.gms.google-services"' android/app/build.gradle
+          else
+            echo "Gradle settings file not found"
+            exit 1
+          fi
           test -f android/app/google-services.json
 
       - name: Install dependencies
