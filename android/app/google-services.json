@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "240098488512",
+    "project_id": "grow-capital-75dcd",
+    "storage_bucket": "grow-capital-75dcd.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:240098488512:android:354c2db499f85e1589bd25",
+        "android_client_info": {
+          "package_name": "com.arish.growcapital"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDkg5cnGylFIPe5AlDHspzf73q1kN_BFo8"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
