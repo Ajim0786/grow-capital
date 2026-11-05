@@ -1,4 +1,3 @@
-
 name: Build GROW CAPITAL APK
 
 on:
@@ -21,7 +20,7 @@ jobs:
           channel: stable
 
       - name: Generate Android Platform
-        run: flutter create --platforms=android --org com.arish --project-name grow_capital .
+        run: flutter create --platforms=android --org com.arish --project-name growcapital .
 
       - name: Configure Firebase
         run: |
@@ -39,27 +38,25 @@ jobs:
           a = app.read_text()
 
           if "com.google.gms.google-services" not in s:
-              match = re.search(r'plugins\s*\{', s)
+              match = re.search(r"plugins\s*\{", s)
               if not match:
                   raise SystemExit("Settings plugins block not found")
               pos = match.end()
-              line = '\n    id("com.google.gms.google-services") version "4.4.2" apply false'
-              s = s[:pos] + line + s[pos:]
+              s = s[:pos] + '\n    id("com.google.gms.google-services") version "4.4.2" apply false' + s[pos:]
               settings.write_text(s)
 
           if "com.google.gms.google-services" not in a:
-              match = re.search(r'plugins\s*\{', a)
+              match = re.search(r"plugins\s*\{", a)
               if not match:
                   raise SystemExit("App plugins block not found")
               pos = match.end()
-              line = '\n    id("com.google.gms.google-services")'
-              a = a[:pos] + line + a[pos:]
+              a = a[:pos] + '\n    id("com.google.gms.google-services")' + a[pos:]
               app.write_text(a)
 
           if not Path("android/app/google-services.json").exists():
               raise SystemExit("google-services.json is missing")
 
-          print("Firebase Gradle configuration completed.")
+          print("Firebase configuration completed.")
           PY
 
       - name: Install dependencies
