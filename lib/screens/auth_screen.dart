@@ -19,8 +19,8 @@ class _AuthScreenState extends State<AuthScreen> {
   Future<void> sendOTP() async {
     final phone = phoneController.text.trim();
 
-    if (phone.length != 10) {
-      showMessage('Enter a valid 10 digit mobile number');
+    if (!RegExp(r'^[6-9][0-9]{9}$').hasMatch(phone)) {
+      showMessage('Enter a valid 10 digit Indian mobile number');
       return;
     }
 
@@ -36,9 +36,12 @@ class _AuthScreenState extends State<AuthScreen> {
           showMessage(error.message ?? 'OTP verification failed');
         },
         codeSent: (id, token) {
+          if (!mounted) return;
+
           setState(() {
             verificationId = id;
           });
+
           showMessage('OTP sent successfully');
         },
         codeAutoRetrievalTimeout: (id) {
@@ -48,12 +51,16 @@ class _AuthScreenState extends State<AuthScreen> {
     } catch (e) {
       showMessage(e.toString());
     } finally {
-      if (mounted) setState(() => loading = false);
+      if (mounted) {
+        setState(() => loading = false);
+      }
     }
   }
 
   Future<void> verifyOTP() async {
-    if (verificationId == null || otpController.text.trim().length != 6) {
+    final otp = otpController.text.trim();
+
+    if (verificationId == null || otp.length != 6) {
       showMessage('Enter the 6 digit OTP');
       return;
     }
@@ -63,21 +70,28 @@ class _AuthScreenState extends State<AuthScreen> {
     try {
       final credential = PhoneAuthProvider.credential(
         verificationId: verificationId!,
-        smsCode: otpController.text.trim(),
+        smsCode: otp,
       );
 
       await FirebaseAuth.instance.signInWithCredential(credential);
+
+      if (mounted) {
+        showMessage('Login successful');
+      }
     } on FirebaseAuthException catch (e) {
       showMessage(e.message ?? 'Invalid OTP');
     } catch (e) {
       showMessage(e.toString());
     } finally {
-      if (mounted) setState(() => loading = false);
+      if (mounted) {
+        setState(() => loading = false);
+      }
     }
   }
 
   void showMessage(String message) {
     if (!mounted) return;
+
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text(message)),
     );
@@ -93,7 +107,7 @@ class _AuthScreenState extends State<AuthScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F7F5),
+      backgroundColor: const Color(0xFF0F1715),
       body: Center(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(24),
@@ -102,7 +116,7 @@ class _AuthScreenState extends State<AuthScreen> {
               const Icon(
                 Icons.account_balance_wallet,
                 size: 75,
-                color: Color(0xFF176B50),
+                color: Color(0xFF17B650),
               ),
               const SizedBox(height: 15),
               const Text(
@@ -110,35 +124,57 @@ class _AuthScreenState extends State<AuthScreen> {
                 style: TextStyle(
                   fontSize: 28,
                   fontWeight: FontWeight.bold,
-                  color: Color(0xFF176B50),
+                  color: Color(0xFF17B650),
                 ),
               ),
               const SizedBox(height: 8),
-              const Text('Login with your mobile number'),
+              const Text(
+                'Login with your mobile number',
+                style: TextStyle(color: Colors.white),
+              ),
               const SizedBox(height: 35),
+
               TextField(
                 controller: phoneController,
                 keyboardType: TextInputType.phone,
                 maxLength: 10,
-                decoration: const InputDecoration(
+                style: const TextStyle(color: Colors.white),
+                decoration: InputDecoration(
+                  counterText: '',
                   labelText: 'Mobile Number',
+                  labelStyle: const TextStyle(color: Colors.white70),
                   prefixText: '+91 ',
-                  border: OutlineInputBorder(),
+                  prefixStyle: const TextStyle(color: Colors.white),
+                  border: const OutlineInputBorder(),
+                  enabledBorder: OutlineInputBorder(
+                    borderSide: BorderSide(color: Colors.grey.shade600),
+                  ),
                 ),
               ),
+
               if (verificationId != null) ...[
                 const SizedBox(height: 15),
                 TextField(
                   controller: otpController,
                   keyboardType: TextInputType.number,
                   maxLength: 6,
-                  decoration: const InputDecoration(
+                  style: const TextStyle(color: Colors.white),
+                  decoration: InputDecoration(
+                    counterText: '',
                     labelText: 'Enter OTP',
-                    border: OutlineInputBorder(),
+                    labelStyle: const TextStyle(color: Colors.white70),
+                    border: const OutlineInputBorder(),
+                    enabledBorder: OutlineInputBorder(
+                      borderSide: BorderSide(
+                        color: Colors.grey.shade600,
+                      ),
+                    ),
                   ),
                 ),
               ],
+
               const SizedBox(height: 20),
+
               SizedBox(
                 width: double.infinity,
                 height: 52,
@@ -148,19 +184,31 @@ class _AuthScreenState extends State<AuthScreen> {
                       : verificationId == null
                           ? sendOTP
                           : verifyOTP,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF17B650),
+                    foregroundColor: Colors.white,
+                  ),
                   child: loading
-                      ? const CircularProgressIndicator()
+                      ? const CircularProgressIndicator(
+                          color: Colors.white,
+                        )
                       : Text(
                           verificationId == null
                               ? 'SEND OTP'
                               : 'VERIFY OTP',
+                          style: const TextStyle(
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
                 ),
               ),
+
               const SizedBox(height: 20),
+
               const Text(
                 'Free to join • No deposit required',
                 textAlign: TextAlign.center,
+                style: TextStyle(color: Colors.white70),
               ),
             ],
           ),
