@@ -21,7 +21,7 @@ jobs:
           channel: stable
 
       - name: Generate Android Platform
-        run: flutter create --platforms=android --org com.arish --project-name growcapital .
+        run: flutter create --platforms=android --org com.arish --project-name grow_capital .
 
       - name: Configure Firebase
         run: |
@@ -32,28 +32,17 @@ jobs:
           settings = Path("android/settings.gradle.kts")
           app = Path("android/app/build.gradle.kts")
 
-          if not settings.exists():
-              settings = Path("android/settings.gradle")
-          if not app.exists():
-              app = Path("android/app/build.gradle")
-
-          for path in (settings, app):
-              if not path.exists():
-                  raise SystemExit(f"Missing Gradle file: {path}")
+          if not settings.exists() or not app.exists():
+              raise SystemExit("Android Gradle files not found")
 
           s = settings.read_text()
           a = app.read_text()
 
           if "com.google.gms.google-services" not in s:
-              if path.suffix == ".kts":
-                  pass
-
               match = re.search(r'plugins\s*\{', s)
               if not match:
-                  raise SystemExit("Gradle plugins block not found in settings")
-              pos = s.find("}", match.end())
-              if pos < 0:
-                  raise SystemExit("Could not find settings plugins block end")
+                  raise SystemExit("Settings plugins block not found")
+              pos = match.end()
               line = '\n    id("com.google.gms.google-services") version "4.4.2" apply false'
               s = s[:pos] + line + s[pos:]
               settings.write_text(s)
@@ -61,14 +50,9 @@ jobs:
           if "com.google.gms.google-services" not in a:
               match = re.search(r'plugins\s*\{', a)
               if not match:
-                  raise SystemExit("Gradle plugins block not found in app")
-              pos = a.find("}", match.end())
-              if pos < 0:
-                  raise SystemExit("Could not find app plugins block end")
-              if app.suffix == ".kts":
-                  line = '\n    id("com.google.gms.google-services")'
-              else:
-                  line = "\n    id 'com.google.gms.google-services'"
+                  raise SystemExit("App plugins block not found")
+              pos = match.end()
+              line = '\n    id("com.google.gms.google-services")'
               a = a[:pos] + line + a[pos:]
               app.write_text(a)
 
@@ -80,6 +64,11 @@ jobs:
 
       - name: Install dependencies
         run: flutter pub get
+
+      - name: Get SHA fingerprints
+        run: |
+          cd android
+          ./gradlew signingReport
 
       - name: Build APK
         run: flutter build apk --release
