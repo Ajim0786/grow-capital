@@ -1,9 +1,8 @@
 
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-
 import 'screens/home_screen.dart';
-import 'auth_screen.dart';
+import 'screens/auth_screen.dart';
 
 class GrowCapitalApp extends StatelessWidget {
   const GrowCapitalApp({super.key});
@@ -30,11 +29,11 @@ class GrowCapitalApp extends StatelessWidget {
             );
           }
 
-          if (!snapshot.hasData) {
-            return AuthScreen();
+          if (snapshot.hasData) {
+            return HomeScreen();
           }
 
-          return const HomeScreen();
+          return AuthScreen();
         },
       ),
     );
