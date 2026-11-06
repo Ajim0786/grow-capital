@@ -1,6 +1,7 @@
+
 name: grow_capital
 description: GROW CAPITAL Android Rewards App
-publish_to: "none"
+publish_to: 'none'
 
 version: 1.0.0+1
 
@@ -15,6 +16,7 @@ dependencies:
     sdk: flutter
 
   intl: any
+  url_launcher: ^6.3.2
 
 dev_dependencies:
   flutter_test:
