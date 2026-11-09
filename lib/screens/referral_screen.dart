@@ -1,3 +1,4 @@
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:share_plus/share_plus.dart';
@@ -9,14 +10,10 @@ class ReferralScreen extends StatelessWidget {
   static const Color cardColor = Color(0xFF1C293B);
   static const Color accent = Color(0xFF19C37D);
 
-  // Demo referral code. Real unique codes will come from Firebase.
   final String referralCode = 'GROW2026';
 
   @override
   Widget build(BuildContext context) {
-    final referralLink =
-        'https://growcapital.app/register?ref=$referralCode';
-
     return Scaffold(
       backgroundColor: background,
       appBar: AppBar(
@@ -56,10 +53,7 @@ class ReferralScreen extends StatelessWidget {
                 Text(
                   'Share your referral code with friends. '
                   'Eligible referrals can be tracked after verification.',
-                  style: TextStyle(
-                    color: Colors.white70,
-                    fontSize: 14,
-                  ),
+                  style: TextStyle(color: Colors.white70, fontSize: 14),
                 ),
               ],
             ),
@@ -116,12 +110,14 @@ class ReferralScreen extends StatelessWidget {
             child: ElevatedButton.icon(
               onPressed: () {
                 Share.share(
-                  'Join GROW CAPITAL using my referral code: '
-                  '$referralCode\n$referralLink',
+                  'Join GROW CAPITAL!\n'
+                  'Use my referral code: $referralCode\n'
+                  'Download the GROW CAPITAL app and enter '
+                  'this code during registration.',
                 );
               },
               icon: const Icon(Icons.share),
-              label: const Text('Share Referral Link'),
+              label: const Text('Share Referral Code'),
               style: ElevatedButton.styleFrom(
                 backgroundColor: accent,
                 foregroundColor: Colors.white,
@@ -182,11 +178,7 @@ class ReferralScreen extends StatelessWidget {
             ),
             child: const Column(
               children: [
-                Icon(
-                  Icons.history,
-                  color: accent,
-                  size: 40,
-                ),
+                Icon(Icons.history, color: accent, size: 40),
                 SizedBox(height: 10),
                 Text(
                   'No referrals yet',
@@ -206,10 +198,9 @@ class ReferralScreen extends StatelessWidget {
           ),
           const SizedBox(height: 20),
           const Text(
-            'Note: This is currently a UI demo. '
-            'Unique referral codes, referral tracking and reward '
-            'verification must be connected to Firebase before '
-            'real referrals or rewards become active.',
+            'Note: Referral tracking and reward verification '
+            'will be connected to Firebase before real rewards '
+            'become active.',
             style: TextStyle(
               color: Colors.white54,
               fontSize: 12,
