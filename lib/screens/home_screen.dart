@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'quiz_screen.dart';
 import 'tasks_screen.dart';
+import 'referral_screen.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -40,6 +41,13 @@ class _HomeScreenState extends State<HomeScreen> {
     Navigator.push(
       context,
       MaterialPageRoute(builder: (_) => const TasksScreen()),
+    );
+  }
+
+  void openReferral() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => const ReferralScreen()),
     );
   }
 
@@ -192,7 +200,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       Icons.people_outline,
                       'Referral',
                       'Invite Friends',
-                      () => showMessage('Referral is coming soon'),
+                      openReferral,
                     ),
                   ),
                   const SizedBox(width: 12),
