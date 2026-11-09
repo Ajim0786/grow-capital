@@ -19,21 +19,20 @@ class _HomeScreenState extends State<HomeScreen> {
   Future<void> openTelegram(String link) async {
     final uri = Uri.parse(link);
     try {
-      final success = await launchUrl(
-        uri,
-        mode: LaunchMode.externalApplication,
-      );
-      if (!success && mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Unable to open Telegram')),
-        );
-      }
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
     } catch (_) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please try again')),
+        const SnackBar(content: Text('Unable to open Telegram')),
       );
     }
+  }
+
+  void openQuiz() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => const QuizScreen()),
+    );
   }
 
   @override
@@ -52,7 +51,6 @@ class _HomeScreenState extends State<HomeScreen> {
             onPressed: () {},
             icon: const Icon(Icons.notifications_none),
           ),
-          const SizedBox(width: 6),
         ],
       ),
       body: SafeArea(
@@ -73,10 +71,8 @@ class _HomeScreenState extends State<HomeScreen> {
                 child: const Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      'AVAILABLE REWARDS',
-                      style: TextStyle(color: Colors.white70, fontSize: 12),
-                    ),
+                    Text('AVAILABLE REWARDS',
+                        style: TextStyle(color: Colors.white70)),
                     SizedBox(height: 10),
                     Text(
                       '₹0.00',
@@ -92,27 +88,18 @@ class _HomeScreenState extends State<HomeScreen> {
                       style: TextStyle(color: Colors.white70),
                     ),
                     SizedBox(height: 18),
-                    Row(
-                      children: [
-                        Icon(Icons.verified_user,
-                            color: Colors.white70, size: 17),
-                        SizedBox(width: 7),
-                        Text(
-                          'FREE TO JOIN • NO DEPOSIT REQUIRED',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 10,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ],
+                    Text(
+                      '✓ FREE TO JOIN • NO DEPOSIT REQUIRED',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                   ],
                 ),
               ),
-
               const SizedBox(height: 18),
-
               Container(
                 width: double.infinity,
                 padding: const EdgeInsets.all(17),
@@ -123,32 +110,22 @@ class _HomeScreenState extends State<HomeScreen> {
                 child: const Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      'GROW CAPITAL PREMIUM',
-                      style: TextStyle(
-                        color: green,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
+                    Text('GROW CAPITAL PREMIUM',
+                        style: TextStyle(
+                          color: green,
+                          fontWeight: FontWeight.bold,
+                        )),
                     SizedBox(height: 6),
-                    Text(
-                      'Optional membership • ₹49/month',
-                      style: TextStyle(fontSize: 15),
-                    ),
+                    Text('Optional membership • ₹49/month'),
                     SizedBox(height: 5),
                     Text(
                       'Free access and withdrawal remain available.',
-                      style: TextStyle(
-                        color: Colors.black54,
-                        fontSize: 12,
-                      ),
+                      style: TextStyle(color: Colors.black54, fontSize: 12),
                     ),
                   ],
                 ),
               ),
-
               const SizedBox(height: 24),
-
               const Text(
                 'Explore Activities',
                 style: TextStyle(
@@ -158,7 +135,6 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
               ),
               const SizedBox(height: 13),
-
               Row(
                 children: [
                   Expanded(
@@ -166,6 +142,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       Icons.quiz_outlined,
                       'Daily Quiz',
                       'Learn & Practice',
+                      openQuiz,
                     ),
                   ),
                   const SizedBox(width: 12),
@@ -174,12 +151,12 @@ class _HomeScreenState extends State<HomeScreen> {
                       Icons.task_alt,
                       'Tasks',
                       'Daily Activities',
+                      () => showMessage('Tasks are coming soon'),
                     ),
                   ),
                 ],
               ),
               const SizedBox(height: 12),
-
               Row(
                 children: [
                   Expanded(
@@ -187,6 +164,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       Icons.people_outline,
                       'Referral',
                       'Invite Friends',
+                      () => showMessage('Referral is coming soon'),
                     ),
                   ),
                   const SizedBox(width: 12),
@@ -195,13 +173,12 @@ class _HomeScreenState extends State<HomeScreen> {
                       Icons.account_balance_wallet_outlined,
                       'My Wallet',
                       'Reward History',
+                      () => showMessage('Wallet is coming soon'),
                     ),
                   ),
                 ],
               ),
-
               const SizedBox(height: 24),
-
               const Text(
                 'Telegram Community',
                 style: TextStyle(
@@ -211,7 +188,6 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
               ),
               const SizedBox(height: 12),
-
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton.icon(
@@ -224,14 +200,10 @@ class _HomeScreenState extends State<HomeScreen> {
                     backgroundColor: green,
                     foregroundColor: Colors.white,
                     padding: const EdgeInsets.symmetric(vertical: 15),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(14),
-                    ),
                   ),
                 ),
               ),
               const SizedBox(height: 10),
-
               SizedBox(
                 width: double.infinity,
                 child: OutlinedButton.icon(
@@ -244,15 +216,10 @@ class _HomeScreenState extends State<HomeScreen> {
                     foregroundColor: green,
                     side: const BorderSide(color: green),
                     padding: const EdgeInsets.symmetric(vertical: 15),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(14),
-                    ),
                   ),
                 ),
               ),
-
               const SizedBox(height: 24),
-
               const Text(
                 'Video Advertisement',
                 style: TextStyle(
@@ -262,7 +229,6 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
               ),
               const SizedBox(height: 10),
-
               Container(
                 width: double.infinity,
                 height: 125,
@@ -274,11 +240,8 @@ class _HomeScreenState extends State<HomeScreen> {
                 child: const Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Icon(
-                      Icons.play_circle_outline,
-                      size: 42,
-                      color: accent,
-                    ),
+                    Icon(Icons.play_circle_outline,
+                        size: 42, color: accent),
                     SizedBox(height: 7),
                     Text(
                       'Video Advertisement Area',
@@ -295,9 +258,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   ],
                 ),
               ),
-
               const SizedBox(height: 24),
-
               Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
@@ -316,9 +277,9 @@ class _HomeScreenState extends State<HomeScreen> {
                     ),
                     SizedBox(height: 8),
                     Text(
-                      'Rewards are subject to verification, '
-                      'eligibility and available funds. '
-                      'No reward is guaranteed. No deposit is required.',
+                      'Rewards are subject to verification, eligibility '
+                      'and available funds. No reward is guaranteed. '
+                      'No deposit is required.',
                       style: TextStyle(
                         color: Colors.black54,
                         fontSize: 12,
@@ -327,9 +288,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   ],
                 ),
               ),
-
               const SizedBox(height: 20),
-
               const Center(
                 child: Text(
                   'GROW CAPITAL • Learn • Engage • Grow',
@@ -343,7 +302,6 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ),
       ),
-
       bottomNavigationBar: NavigationBar(
         selectedIndex: selectedIndex,
         onDestinationSelected: (index) {
@@ -371,10 +329,17 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
+  void showMessage(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message)),
+    );
+  }
+
   Widget activityCard(
     IconData icon,
     String title,
     String subtitle,
+    VoidCallback onTap,
   ) {
     return Card(
       elevation: 0,
@@ -382,33 +347,208 @@ class _HomeScreenState extends State<HomeScreen> {
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(17),
       ),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(
-          vertical: 19,
-          horizontal: 8,
-        ),
-        child: Column(
-          children: [
-            Icon(icon, size: 32, color: accent),
-            const SizedBox(height: 10),
-            Text(
-              title,
-              style: const TextStyle(
-                fontWeight: FontWeight.bold,
-                color: green,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(17),
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(
+            vertical: 19,
+            horizontal: 8,
+          ),
+          child: Column(
+            children: [
+              Icon(icon, size: 32, color: accent),
+              const SizedBox(height: 10),
+              Text(
+                title,
+                style: const TextStyle(
+                  fontWeight: FontWeight.bold,
+                  color: green,
+                ),
               ),
-            ),
-            const SizedBox(height: 5),
-            Text(
-              subtitle,
-              textAlign: TextAlign.center,
-              style: const TextStyle(
-                fontSize: 11,
-                color: Colors.black54,
+              const SizedBox(height: 5),
+              Text(
+                subtitle,
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  fontSize: 11,
+                  color: Colors.black54,
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
+      ),
+    );
+  }
+}
+
+class QuizScreen extends StatefulWidget {
+  const QuizScreen({super.key});
+
+  @override
+  State<QuizScreen> createState() => _QuizScreenState();
+}
+
+class _QuizScreenState extends State<QuizScreen> {
+  int questionIndex = 0;
+  int score = 0;
+  int? selectedAnswer;
+  bool finished = false;
+
+  final List<Map<String, dynamic>> questions = [
+    {
+      'question': 'What is the capital of India?',
+      'options': ['Mumbai', 'New Delhi', 'Kolkata', 'Chennai'],
+      'answer': 1,
+    },
+    {
+      'question': 'Which planet is known as the Red Planet?',
+      'options': ['Earth', 'Venus', 'Mars', 'Jupiter'],
+      'answer': 2,
+    },
+    {
+      'question': 'How many days are there in a week?',
+      'options': ['5', '6', '7', '8'],
+      'answer': 2,
+    },
+    {
+      'question': 'Which is the largest ocean?',
+      'options': ['Indian', 'Atlantic', 'Arctic', 'Pacific'],
+      'answer': 3,
+    },
+    {
+      'question': 'Which language is used for Flutter apps?',
+      'options': ['Java', 'Dart', 'Python', 'PHP'],
+      'answer': 1,
+    },
+  ];
+
+  void submitAnswer() {
+    if (selectedAnswer == null) return;
+
+    if (selectedAnswer == questions[questionIndex]['answer']) {
+      score++;
+    }
+
+    setState(() {
+      if (questionIndex < questions.length - 1) {
+        questionIndex++;
+        selectedAnswer = null;
+      } else {
+        finished = true;
+      }
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final question = questions[questionIndex];
+
+    return Scaffold(
+      backgroundColor: const Color(0xFFF3F7F4),
+      appBar: AppBar(
+        backgroundColor: const Color(0xFF103D30),
+        foregroundColor: Colors.white,
+        title: const Text('Daily Quiz'),
+      ),
+      body: Padding(
+        padding: const EdgeInsets.all(20),
+        child: finished
+            ? Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Icon(
+                      Icons.emoji_events,
+                      size: 75,
+                      color: Color(0xFF16845C),
+                    ),
+                    const SizedBox(height: 18),
+                    const Text(
+                      'Quiz Completed!',
+                      style: TextStyle(
+                        fontSize: 25,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    Text(
+                      'Your Score: $score / ${questions.length}',
+                      style: const TextStyle(fontSize: 20),
+                    ),
+                    const SizedBox(height: 20),
+                    ElevatedButton(
+                      onPressed: () {
+                        setState(() {
+                          questionIndex = 0;
+                          score = 0;
+                          selectedAnswer = null;
+                          finished = false;
+                        });
+                      },
+                      child: const Text('Try Again'),
+                    ),
+                  ],
+                ),
+              )
+            : Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Question ${questionIndex + 1} of ${questions.length}',
+                    style: const TextStyle(
+                      color: Color(0xFF16845C),
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  LinearProgressIndicator(
+                    value: (questionIndex + 1) / questions.length,
+                    color: const Color(0xFF16845C),
+                  ),
+                  const SizedBox(height: 30),
+                  Text(
+                    question['question'],
+                    style: const TextStyle(
+                      fontSize: 22,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 22),
+                  ...List.generate(
+                    (question['options'] as List).length,
+                    (index) => Card(
+                      child: RadioListTile<int>(
+                        value: index,
+                        groupValue: selectedAnswer,
+                        title: Text(question['options'][index]),
+                        onChanged: (value) {
+                          setState(() => selectedAnswer = value);
+                        },
+                      ),
+                    ),
+                  ),
+                  const Spacer(),
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton(
+                      onPressed:
+                          selectedAnswer == null ? null : submitAnswer,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF103D30),
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.all(15),
+                      ),
+                      child: Text(
+                        questionIndex == questions.length - 1
+                            ? 'Finish Quiz'
+                            : 'Next Question',
+                      ),
+                    ),
+                  ),
+                ],
+              ),
       ),
     );
   }
