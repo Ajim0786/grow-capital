@@ -1,6 +1,6 @@
-
 import 'package:flutter/material.dart';
 import 'quiz_screen.dart';
+import 'tasks_screen.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -34,6 +34,26 @@ class _HomeScreenState extends State<HomeScreen> {
       context,
       MaterialPageRoute(builder: (_) => const QuizScreen()),
     );
+  }
+
+  void openTasks() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => const TasksScreen()),
+    );
+  }
+
+  void selectNavigation(int index) {
+    if (index == 1) {
+      openTasks();
+    } else {
+      setState(() => selectedIndex = index);
+      if (index == 2) {
+        showMessage('Wallet is coming soon');
+      } else if (index == 3) {
+        showMessage('Profile is coming soon');
+      }
+    }
   }
 
   @override
@@ -72,8 +92,10 @@ class _HomeScreenState extends State<HomeScreen> {
                 child: const Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('AVAILABLE REWARDS',
-                        style: TextStyle(color: Colors.white70)),
+                    Text(
+                      'AVAILABLE REWARDS',
+                      style: TextStyle(color: Colors.white70),
+                    ),
                     SizedBox(height: 10),
                     Text(
                       '₹0.00',
@@ -111,17 +133,22 @@ class _HomeScreenState extends State<HomeScreen> {
                 child: const Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('GROW CAPITAL PREMIUM',
-                        style: TextStyle(
-                          color: green,
-                          fontWeight: FontWeight.bold,
-                        )),
+                    Text(
+                      'GROW CAPITAL PREMIUM',
+                      style: TextStyle(
+                        color: green,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
                     SizedBox(height: 6),
                     Text('Optional membership • ₹49/month'),
                     SizedBox(height: 5),
                     Text(
                       'Free access and withdrawal remain available.',
-                      style: TextStyle(color: Colors.black54, fontSize: 12),
+                      style: TextStyle(
+                        color: Colors.black54,
+                        fontSize: 12,
+                      ),
                     ),
                   ],
                 ),
@@ -152,7 +179,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       Icons.task_alt,
                       'Tasks',
                       'Daily Activities',
-                      () => showMessage('Tasks are coming soon'),
+                      openTasks,
                     ),
                   ),
                 ],
@@ -241,8 +268,11 @@ class _HomeScreenState extends State<HomeScreen> {
                 child: const Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Icon(Icons.play_circle_outline,
-                        size: 42, color: accent),
+                    Icon(
+                      Icons.play_circle_outline,
+                      size: 42,
+                      color: accent,
+                    ),
                     SizedBox(height: 7),
                     Text(
                       'Video Advertisement Area',
@@ -305,9 +335,7 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
       bottomNavigationBar: NavigationBar(
         selectedIndex: selectedIndex,
-        onDestinationSelected: (index) {
-          setState(() => selectedIndex = index);
-        },
+        onDestinationSelected: selectNavigation,
         destinations: const [
           NavigationDestination(
             icon: Icon(Icons.home_outlined),
@@ -379,177 +407,6 @@ class _HomeScreenState extends State<HomeScreen> {
             ],
           ),
         ),
-      ),
-    );
-  }
-}
-
-class QuizScreen extends StatefulWidget {
-  const QuizScreen({super.key});
-
-  @override
-  State<QuizScreen> createState() => _QuizScreenState();
-}
-
-class _QuizScreenState extends State<QuizScreen> {
-  int questionIndex = 0;
-  int score = 0;
-  int? selectedAnswer;
-  bool finished = false;
-
-  final List<Map<String, dynamic>> questions = [
-    {
-      'question': 'What is the capital of India?',
-      'options': ['Mumbai', 'New Delhi', 'Kolkata', 'Chennai'],
-      'answer': 1,
-    },
-    {
-      'question': 'Which planet is known as the Red Planet?',
-      'options': ['Earth', 'Venus', 'Mars', 'Jupiter'],
-      'answer': 2,
-    },
-    {
-      'question': 'How many days are there in a week?',
-      'options': ['5', '6', '7', '8'],
-      'answer': 2,
-    },
-    {
-      'question': 'Which is the largest ocean?',
-      'options': ['Indian', 'Atlantic', 'Arctic', 'Pacific'],
-      'answer': 3,
-    },
-    {
-      'question': 'Which language is used for Flutter apps?',
-      'options': ['Java', 'Dart', 'Python', 'PHP'],
-      'answer': 1,
-    },
-  ];
-
-  void submitAnswer() {
-    if (selectedAnswer == null) return;
-
-    if (selectedAnswer == questions[questionIndex]['answer']) {
-      score++;
-    }
-
-    setState(() {
-      if (questionIndex < questions.length - 1) {
-        questionIndex++;
-        selectedAnswer = null;
-      } else {
-        finished = true;
-      }
-    });
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final question = questions[questionIndex];
-
-    return Scaffold(
-      backgroundColor: const Color(0xFFF3F7F4),
-      appBar: AppBar(
-        backgroundColor: const Color(0xFF103D30),
-        foregroundColor: Colors.white,
-        title: const Text('Daily Quiz'),
-      ),
-      body: Padding(
-        padding: const EdgeInsets.all(20),
-        child: finished
-            ? Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    const Icon(
-                      Icons.emoji_events,
-                      size: 75,
-                      color: Color(0xFF16845C),
-                    ),
-                    const SizedBox(height: 18),
-                    const Text(
-                      'Quiz Completed!',
-                      style: TextStyle(
-                        fontSize: 25,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    Text(
-                      'Your Score: $score / ${questions.length}',
-                      style: const TextStyle(fontSize: 20),
-                    ),
-                    const SizedBox(height: 20),
-                    ElevatedButton(
-                      onPressed: () {
-                        setState(() {
-                          questionIndex = 0;
-                          score = 0;
-                          selectedAnswer = null;
-                          finished = false;
-                        });
-                      },
-                      child: const Text('Try Again'),
-                    ),
-                  ],
-                ),
-              )
-            : Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Question ${questionIndex + 1} of ${questions.length}',
-                    style: const TextStyle(
-                      color: Color(0xFF16845C),
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  const SizedBox(height: 20),
-                  LinearProgressIndicator(
-                    value: (questionIndex + 1) / questions.length,
-                    color: const Color(0xFF16845C),
-                  ),
-                  const SizedBox(height: 30),
-                  Text(
-                    question['question'],
-                    style: const TextStyle(
-                      fontSize: 22,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  const SizedBox(height: 22),
-                  ...List.generate(
-                    (question['options'] as List).length,
-                    (index) => Card(
-                      child: RadioListTile<int>(
-                        value: index,
-                        groupValue: selectedAnswer,
-                        title: Text(question['options'][index]),
-                        onChanged: (value) {
-                          setState(() => selectedAnswer = value);
-                        },
-                      ),
-                    ),
-                  ),
-                  const Spacer(),
-                  SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton(
-                      onPressed:
-                          selectedAnswer == null ? null : submitAnswer,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF103D30),
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.all(15),
-                      ),
-                      child: Text(
-                        questionIndex == questions.length - 1
-                            ? 'Finish Quiz'
-                            : 'Next Question',
-                      ),
-                    ),
-                  ),
-                ],
-              ),
       ),
     );
   }
