@@ -1,5 +1,6 @@
 
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -14,6 +15,26 @@ class _HomeScreenState extends State<HomeScreen> {
   static const Color green = Color(0xFF103D30);
   static const Color accent = Color(0xFF16845C);
   static const Color background = Color(0xFFF3F7F4);
+
+  Future<void> openTelegram(String link) async {
+    final uri = Uri.parse(link);
+    try {
+      final success = await launchUrl(
+        uri,
+        mode: LaunchMode.externalApplication,
+      );
+      if (!success && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Unable to open Telegram')),
+        );
+      }
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please try again')),
+      );
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -54,10 +75,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   children: [
                     Text(
                       'AVAILABLE REWARDS',
-                      style: TextStyle(
-                        color: Colors.white70,
-                        fontSize: 12,
-                      ),
+                      style: TextStyle(color: Colors.white70, fontSize: 12),
                     ),
                     SizedBox(height: 10),
                     Text(
@@ -92,7 +110,9 @@ class _HomeScreenState extends State<HomeScreen> {
                   ],
                 ),
               ),
+
               const SizedBox(height: 18),
+
               Container(
                 width: double.infinity,
                 padding: const EdgeInsets.all(17),
@@ -126,7 +146,9 @@ class _HomeScreenState extends State<HomeScreen> {
                   ],
                 ),
               ),
+
               const SizedBox(height: 24),
+
               const Text(
                 'Explore Activities',
                 style: TextStyle(
@@ -136,6 +158,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
               ),
               const SizedBox(height: 13),
+
               Row(
                 children: [
                   Expanded(
@@ -156,6 +179,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 ],
               ),
               const SizedBox(height: 12),
+
               Row(
                 children: [
                   Expanded(
@@ -175,7 +199,60 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                 ],
               ),
+
               const SizedBox(height: 24),
+
+              const Text(
+                'Telegram Community',
+                style: TextStyle(
+                  fontSize: 19,
+                  fontWeight: FontWeight.bold,
+                  color: green,
+                ),
+              ),
+              const SizedBox(height: 12),
+
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton.icon(
+                  onPressed: () => openTelegram(
+                    'https://t.me/growcapital_support2',
+                  ),
+                  icon: const Icon(Icons.campaign),
+                  label: const Text('Official Updates'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: green,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 15),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 10),
+
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton.icon(
+                  onPressed: () => openTelegram(
+                    'https://t.me/growcapital_support1',
+                  ),
+                  icon: const Icon(Icons.support_agent),
+                  label: const Text('Personal Customer Support'),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: green,
+                    side: const BorderSide(color: green),
+                    padding: const EdgeInsets.symmetric(vertical: 15),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                  ),
+                ),
+              ),
+
+              const SizedBox(height: 24),
+
               const Text(
                 'Video Advertisement',
                 style: TextStyle(
@@ -185,6 +262,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
               ),
               const SizedBox(height: 10),
+
               Container(
                 width: double.infinity,
                 height: 125,
@@ -217,7 +295,9 @@ class _HomeScreenState extends State<HomeScreen> {
                   ],
                 ),
               ),
+
               const SizedBox(height: 24),
+
               Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
@@ -247,7 +327,9 @@ class _HomeScreenState extends State<HomeScreen> {
                   ],
                 ),
               ),
+
               const SizedBox(height: 20),
+
               const Center(
                 child: Text(
                   'GROW CAPITAL • Learn • Engage • Grow',
@@ -261,6 +343,7 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ),
       ),
+
       bottomNavigationBar: NavigationBar(
         selectedIndex: selectedIndex,
         onDestinationSelected: (index) {
