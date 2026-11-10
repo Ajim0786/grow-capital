@@ -43,15 +43,11 @@ class _AuthScreenState extends State<AuthScreen> {
 
     if (letters.length < 3) return 'USER';
 
-    return letters.substring(
-      0,
-      min(4, letters.length),
-    );
+    return letters.substring(0, min(4, letters.length));
   }
 
   String makeReferralCode(String prefix) {
-    final number = 100 + random.nextInt(900);
-    return '$prefix$number';
+    return '$prefix${100 + random.nextInt(900)}';
   }
 
   Future<bool> saveNewAccount({
@@ -67,55 +63,59 @@ class _AuthScreenState extends State<AuthScreen> {
       final code = makeReferralCode(prefix);
 
       final userRef = db.collection('users').doc(uid);
-      final ownCodeRef = db.collection('referral_codes').doc(code);
+      final ownCodeRef =
+          db.collection('referral_codes').doc(code);
 
-      final success = await db.runTransaction<bool>((transaction) async {
-        final existingCode = await transaction.get(ownCodeRef);
+      final success = await db.runTransaction<bool>(
+        (transaction) async {
+          final existingCode = await transaction.get(ownCodeRef);
 
-        if (existingCode.exists) {
-          return false;
-        }
-
-        if (referredByCode != null) {
-          final referrerRef = db
-              .collection('referral_codes')
-              .doc(referredByCode);
-
-          final referrerSnapshot = await transaction.get(referrerRef);
-
-          if (!referrerSnapshot.exists ||
-              referrerSnapshot.data()?['uid'] != referredByUid) {
-            throw Exception('Referral code is no longer valid');
+          if (existingCode.exists) {
+            return false;
           }
 
-          if (referredByUid == uid) {
-            throw Exception('You cannot use your own referral code');
+          if (referredByCode != null && referredByUid != null) {
+            final referrerRef = db
+                .collection('referral_codes')
+                .doc(referredByCode);
+
+            final referrerSnapshot =
+                await transaction.get(referrerRef);
+
+            if (!referrerSnapshot.exists ||
+                referrerSnapshot.data()?['uid'] != referredByUid) {
+              throw Exception('Referral code is no longer valid.');
+            }
+
+            if (referredByUid == uid) {
+              throw Exception('You cannot use your own referral code.');
+            }
           }
-        }
 
-        final userData = <String, dynamic>{
-          'uid': uid,
-          'fullName': name,
-          'mobileNumber': phone,
-          'email': email,
-          'referralCode': code,
-          'createdAt': FieldValue.serverTimestamp(),
-        };
+          final userData = <String, dynamic>{
+            'uid': uid,
+            'fullName': name,
+            'mobileNumber': phone,
+            'email': email,
+            'referralCode': code,
+            'createdAt': FieldValue.serverTimestamp(),
+          };
 
-        if (referredByCode != null && referredByUid != null) {
-          userData['referredByCode'] = referredByCode;
-          userData['referredByUid'] = referredByUid;
-        }
+          if (referredByCode != null && referredByUid != null) {
+            userData['referredByCode'] = referredByCode;
+            userData['referredByUid'] = referredByUid;
+          }
 
-        transaction.set(userRef, userData);
+          transaction.set(userRef, userData);
 
-        transaction.set(ownCodeRef, {
-          'uid': uid,
-          'createdAt': FieldValue.serverTimestamp(),
-        });
+          transaction.set(ownCodeRef, {
+            'uid': uid,
+            'createdAt': FieldValue.serverTimestamp(),
+          });
 
-        return true;
-      });
+          return true;
+        },
+      );
 
       if (success) return true;
     }
@@ -129,7 +129,8 @@ class _AuthScreenState extends State<AuthScreen> {
     final email = emailController.text.trim();
     final password = passwordController.text;
     final confirmPassword = confirmPasswordController.text;
-    final enteredReferral = referralController.text.trim().toUpperCase();
+    final enteredReferral =
+        referralController.text.trim().toUpperCase();
 
     if (email.isEmpty || !email.contains('@')) {
       showMessage('Enter a valid Gmail address');
@@ -171,7 +172,7 @@ class _AuthScreenState extends State<AuthScreen> {
       if (isRegister) {
         String? referredByUid;
 
-        // Validate the referral code before creating the account.
+        // Verify referral code before account creation.
         if (enteredReferral.isNotEmpty) {
           final referralSnapshot = await db
               .collection('referral_codes')
@@ -183,7 +184,8 @@ class _AuthScreenState extends State<AuthScreen> {
             return;
           }
 
-          referredByUid = referralSnapshot.data()?['uid'] as String?;
+          referredByUid =
+              referralSnapshot.data()?['uid'] as String?;
 
           if (referredByUid == null) {
             showMessage('Invalid referral code');
@@ -198,6 +200,7 @@ class _AuthScreenState extends State<AuthScreen> {
         );
 
         final user = credential.user!;
+
         await user.updateDisplayName(name);
 
         final saved = await saveNewAccount(
@@ -213,12 +216,13 @@ class _AuthScreenState extends State<AuthScreen> {
 
         if (!saved) {
           showMessage(
-            'Account created, but referral code could not be generated. '
-            'Please contact support before registering again.',
+            'Account created, but referral data could not be saved. '
+            'Please contact support.',
           );
           return;
         }
 
+        referralController.clear();
         showMessage('Registration successful!');
       } else {
         await FirebaseAuth.instance.signInWithEmailAndPassword(
@@ -279,6 +283,7 @@ class _AuthScreenState extends State<AuthScreen> {
       await FirebaseAuth.instance.sendPasswordResetEmail(
         email: email,
       );
+
       showMessage('Password reset link sent to your Gmail');
     } on FirebaseAuthException catch (e) {
       showMessage(e.message ?? 'Could not send reset link');
@@ -303,9 +308,10 @@ class _AuthScreenState extends State<AuthScreen> {
         keyboardType: keyboard,
         obscureText: password && obscurePassword,
         maxLength: maxLength,
-        textCapitalization: label == 'Referral Code'
-            ? TextCapitalization.characters
-            : TextCapitalization.none,
+        textCapitalization:
+            label.startsWith('Referral Code')
+                ? TextCapitalization.characters
+                : TextCapitalization.none,
         style: const TextStyle(color: Colors.white),
         decoration: InputDecoration(
           counterText: '',
