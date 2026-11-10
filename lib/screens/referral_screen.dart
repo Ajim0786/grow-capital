@@ -18,8 +18,10 @@ class _ReferralScreenState extends State<ReferralScreen> {
   static const Color accent = Color(0xFF19C37D);
 
   String? referralCode;
-  bool loading = true;
   String? errorMessage;
+  bool loading = true;
+
+  int totalInvites = 0;
 
   @override
   void initState() {
@@ -44,80 +46,73 @@ class _ReferralScreenState extends State<ReferralScreen> {
 
       final firestore = FirebaseFirestore.instance;
 
-      final userRef = firestore.collection('users').doc(user.uid);
+      // Read the existing referral code from user profile.
+      final userSnapshot = await firestore
+          .collection('users')
+          .doc(user.uid)
+          .get();
 
-      final code = 'GROW-${user.uid}';
+      if (!userSnapshot.exists) {
+        throw Exception('User profile not found.');
+      }
 
-      final codeRef =
-          firestore.collection('referral_codes').doc(code);
+      final savedCode = userSnapshot.data()?['referralCode'];
 
-      await firestore.runTransaction((transaction) async {
-        final userSnapshot = await transaction.get(userRef);
-        final codeSnapshot = await transaction.get(codeRef);
+      if (savedCode == null || savedCode.toString().isEmpty) {
+        throw Exception('Referral code not found in your profile.');
+      }
 
-        if (userSnapshot.exists) {
-          final savedCode =
-              userSnapshot.data()?['referralCode'];
+      final code = savedCode.toString();
 
-          if (savedCode != code) {
-            throw Exception('Referral code verification failed.');
-          }
-        } else {
-          transaction.set(userRef, {
-            'uid': user.uid,
-            'referralCode': code,
-            'createdAt': FieldValue.serverTimestamp(),
-          });
-        }
+      // Verify that this referral code belongs to this user.
+      final codeSnapshot = await firestore
+          .collection('referral_codes')
+          .doc(code)
+          .get();
 
-        if (codeSnapshot.exists) {
-          final savedUid = codeSnapshot.data()?['uid'];
+      if (!codeSnapshot.exists ||
+          codeSnapshot.data()?['uid'] != user.uid) {
+        throw Exception('Referral code verification failed.');
+      }
 
-          if (savedUid != user.uid) {
-            throw Exception('Referral code already belongs to another user.');
-          }
-        } else {
-          transaction.set(codeRef, {
-            'uid': user.uid,
-            'createdAt': FieldValue.serverTimestamp(),
-          });
-        }
+      if (!mounted) return;
+
+      setState(() {
+        referralCode = code;
+        loading = false;
       });
-
-      if (mounted) {
-        setState(() {
-          referralCode = code;
-          loading = false;
-        });
-      }
     } catch (e) {
-      if (mounted) {
-        setState(() {
-          loading = false;
-          errorMessage = e.toString();
-        });
-      }
+      if (!mounted) return;
+
+      setState(() {
+        loading = false;
+        errorMessage = e.toString().replaceFirst('Exception: ', '');
+      });
     }
   }
 
-  void copyCode() {
+  Future<void> copyCode() async {
     final code = referralCode;
     if (code == null) return;
 
-    Clipboard.setData(ClipboardData(text: code));
+    await Clipboard.setData(ClipboardData(text: code));
+
+    if (!mounted) return;
 
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Referral code copied')),
+      const SnackBar(
+        content: Text('Referral code copied successfully!'),
+      ),
     );
   }
 
-  void shareCode() {
+  Future<void> shareCode() async {
     final code = referralCode;
     if (code == null) return;
 
-    Share.share(
-      'Join GROW CAPITAL!\n'
-      'Use my referral code: $code\n'
+    await Share.share(
+      'Join GROW CAPITAL!\n\n'
+      'Use my referral code: $code\n\n'
       'Download the GROW CAPITAL app and enter '
       'this code during registration.',
     );
@@ -210,7 +205,9 @@ class _ReferralScreenState extends State<ReferralScreen> {
                         ],
                       ),
                     ),
+
                     const SizedBox(height: 22),
+
                     const Text(
                       'Your Referral Code',
                       style: TextStyle(
@@ -219,7 +216,9 @@ class _ReferralScreenState extends State<ReferralScreen> {
                         fontWeight: FontWeight.bold,
                       ),
                     ),
+
                     const SizedBox(height: 12),
+
                     Container(
                       padding: const EdgeInsets.all(18),
                       decoration: BoxDecoration(
@@ -234,8 +233,9 @@ class _ReferralScreenState extends State<ReferralScreen> {
                               referralCode ?? '',
                               style: const TextStyle(
                                 color: accent,
-                                fontSize: 17,
+                                fontSize: 22,
                                 fontWeight: FontWeight.bold,
+                                letterSpacing: 1,
                               ),
                             ),
                           ),
@@ -249,7 +249,9 @@ class _ReferralScreenState extends State<ReferralScreen> {
                         ],
                       ),
                     ),
+
                     const SizedBox(height: 15),
+
                     SizedBox(
                       width: double.infinity,
                       child: ElevatedButton.icon(
@@ -263,7 +265,9 @@ class _ReferralScreenState extends State<ReferralScreen> {
                         ),
                       ),
                     ),
+
                     const SizedBox(height: 25),
+
                     const Text(
                       'Referral Statistics',
                       style: TextStyle(
@@ -272,33 +276,33 @@ class _ReferralScreenState extends State<ReferralScreen> {
                         fontWeight: FontWeight.bold,
                       ),
                     ),
+
                     const SizedBox(height: 13),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: statCard(
-                            Icons.people_outline,
-                            'Total Invites',
-                            '0',
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: statCard(
-                            Icons.verified_user_outlined,
-                            'Verified',
-                            '0',
-                          ),
-                        ),
-                      ],
+
+                    statCard(
+                      Icons.people_outline,
+                      'Total Invites',
+                      'Coming soon',
                     ),
+
                     const SizedBox(height: 12),
+
+                    statCard(
+                      Icons.verified_user_outlined,
+                      'Verified Referrals',
+                      'Coming soon',
+                    ),
+
+                    const SizedBox(height: 12),
+
                     statCard(
                       Icons.account_balance_wallet_outlined,
                       'Referral Rewards',
-                      '₹0.00',
+                      'Not active',
                     ),
+
                     const SizedBox(height: 25),
+
                     const Text(
                       'Referral History',
                       style: TextStyle(
@@ -307,7 +311,9 @@ class _ReferralScreenState extends State<ReferralScreen> {
                         fontWeight: FontWeight.bold,
                       ),
                     ),
+
                     const SizedBox(height: 12),
+
                     Container(
                       padding: const EdgeInsets.all(22),
                       decoration: BoxDecoration(
@@ -323,7 +329,7 @@ class _ReferralScreenState extends State<ReferralScreen> {
                           ),
                           SizedBox(height: 10),
                           Text(
-                            'No referrals yet',
+                            'Referral History',
                             style: TextStyle(
                               color: Colors.white,
                               fontWeight: FontWeight.bold,
@@ -331,15 +337,17 @@ class _ReferralScreenState extends State<ReferralScreen> {
                           ),
                           SizedBox(height: 6),
                           Text(
-                            'Referral tracking will be connected '
-                            'in the next step.',
+                            'Referral history will appear here '
+                            'after tracking is connected.',
                             textAlign: TextAlign.center,
                             style: TextStyle(color: Colors.white60),
                           ),
                         ],
                       ),
                     ),
+
                     const SizedBox(height: 20),
+
                     const Text(
                       'Referral rewards are not active yet. '
                       'Verification and reward rules will be '
@@ -376,7 +384,7 @@ class _ReferralScreenState extends State<ReferralScreen> {
             value,
             style: const TextStyle(
               color: Colors.white,
-              fontSize: 23,
+              fontSize: 21,
               fontWeight: FontWeight.bold,
             ),
           ),
