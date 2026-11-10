@@ -1,6 +1,7 @@
 
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class AuthScreen extends StatefulWidget {
   const AuthScreen({super.key});
@@ -10,97 +11,226 @@ class AuthScreen extends StatefulWidget {
 }
 
 class _AuthScreenState extends State<AuthScreen> {
+  final nameController = TextEditingController();
   final phoneController = TextEditingController();
-  final otpController = TextEditingController();
+  final emailController = TextEditingController();
+  final passwordController = TextEditingController();
+  final confirmPasswordController = TextEditingController();
 
-  String? verificationId;
+  bool isRegister = true;
   bool loading = false;
+  bool obscurePassword = true;
 
-  Future<void> sendOTP() async {
-    final phone = phoneController.text.trim();
-
-    if (!RegExp(r'^[6-9][0-9]{9}$').hasMatch(phone)) {
-      showMessage('Enter a valid 10 digit Indian mobile number');
-      return;
-    }
-
-    setState(() => loading = true);
-
-    try {
-      await FirebaseAuth.instance.verifyPhoneNumber(
-        phoneNumber: '+91$phone',
-        verificationCompleted: (credential) async {
-          await FirebaseAuth.instance.signInWithCredential(credential);
-        },
-        verificationFailed: (error) {
-          showMessage(error.message ?? 'OTP verification failed');
-        },
-        codeSent: (id, token) {
-          if (!mounted) return;
-
-          setState(() {
-            verificationId = id;
-          });
-
-          showMessage('OTP sent successfully');
-        },
-        codeAutoRetrievalTimeout: (id) {
-          verificationId = id;
-        },
-      );
-    } catch (e) {
-      showMessage(e.toString());
-    } finally {
-      if (mounted) {
-        setState(() => loading = false);
-      }
-    }
-  }
-
-  Future<void> verifyOTP() async {
-    final otp = otpController.text.trim();
-
-    if (verificationId == null || otp.length != 6) {
-      showMessage('Enter the 6 digit OTP');
-      return;
-    }
-
-    setState(() => loading = true);
-
-    try {
-      final credential = PhoneAuthProvider.credential(
-        verificationId: verificationId!,
-        smsCode: otp,
-      );
-
-      await FirebaseAuth.instance.signInWithCredential(credential);
-
-      if (mounted) {
-        showMessage('Login successful');
-      }
-    } on FirebaseAuthException catch (e) {
-      showMessage(e.message ?? 'Invalid OTP');
-    } catch (e) {
-      showMessage(e.toString());
-    } finally {
-      if (mounted) {
-        setState(() => loading = false);
-      }
-    }
-  }
+  final Color green = const Color(0xFF17B650);
 
   void showMessage(String message) {
     if (!mounted) return;
-
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text(message)),
     );
   }
 
+  Future<void> submit() async {
+    final name = nameController.text.trim();
+    final phone = phoneController.text.trim();
+    final email = emailController.text.trim();
+    final password = passwordController.text;
+    final confirmPassword = confirmPasswordController.text;
+
+    if (email.isEmpty || !email.contains('@')) {
+      showMessage('Enter a valid Gmail address');
+      return;
+    }
+
+    if (password.length < 6) {
+      showMessage('Password must be at least 6 characters');
+      return;
+    }
+
+    if (isRegister) {
+      if (name.isEmpty) {
+        showMessage('Enter your full name');
+        return;
+      }
+
+      if (!RegExp(r'^[6-9][0-9]{9}$').hasMatch(phone)) {
+        showMessage('Enter a valid 10 digit mobile number');
+        return;
+      }
+
+      if (password != confirmPassword) {
+        showMessage('Passwords do not match');
+        return;
+      }
+    }
+
+    setState(() => loading = true);
+
+    try {
+      if (isRegister) {
+        final credential = await FirebaseAuth.instance
+            .createUserWithEmailAndPassword(
+          email: email,
+          password: password,
+        );
+
+        final user = credential.user!;
+        final uid = user.uid;
+        final referralCode = 'GROW-$uid';
+
+        final batch = FirebaseFirestore.instance.batch();
+
+        final userRef = FirebaseFirestore.instance
+            .collection('users')
+            .doc(uid);
+
+        final referralRef = FirebaseFirestore.instance
+            .collection('referral_codes')
+            .doc(referralCode);
+
+        batch.set(userRef, {
+          'uid': uid,
+          'fullName': name,
+          'mobileNumber': phone,
+          'email': email,
+          'referralCode': referralCode,
+          'createdAt': FieldValue.serverTimestamp(),
+        });
+
+        batch.set(referralRef, {
+          'uid': uid,
+          'createdAt': FieldValue.serverTimestamp(),
+        });
+
+        await batch.commit();
+
+        if (mounted) {
+          showMessage('Registration successful!');
+        }
+      } else {
+        await FirebaseAuth.instance.signInWithEmailAndPassword(
+          email: email,
+          password: password,
+        );
+
+        if (mounted) {
+          showMessage('Login successful!');
+        }
+      }
+    } on FirebaseAuthException catch (e) {
+      String message;
+
+      switch (e.code) {
+        case 'email-already-in-use':
+          message = 'This Gmail is already registered';
+          break;
+        case 'invalid-email':
+          message = 'Invalid Gmail address';
+          break;
+        case 'weak-password':
+          message = 'Please use a stronger password';
+          break;
+        case 'user-not-found':
+        case 'wrong-password':
+        case 'invalid-credential':
+          message = 'Incorrect Gmail or password';
+          break;
+        case 'network-request-failed':
+          message = 'Check your internet connection';
+          break;
+        default:
+          message = e.message ?? 'Authentication failed';
+      }
+
+      showMessage(message);
+    } on FirebaseException catch (e) {
+      showMessage('Database error: ${e.message ?? e.code}');
+    } catch (e) {
+      showMessage('Something went wrong: $e');
+    } finally {
+      if (mounted) {
+        setState(() => loading = false);
+      }
+    }
+  }
+
+  Future<void> forgotPassword() async {
+    final email = emailController.text.trim();
+
+    if (email.isEmpty || !email.contains('@')) {
+      showMessage('Enter your Gmail address first');
+      return;
+    }
+
+    setState(() => loading = true);
+
+    try {
+      await FirebaseAuth.instance.sendPasswordResetEmail(
+        email: email,
+      );
+      showMessage('Password reset link sent to your Gmail');
+    } on FirebaseAuthException catch (e) {
+      showMessage(e.message ?? 'Could not send reset link');
+    } finally {
+      if (mounted) {
+        setState(() => loading = false);
+      }
+    }
+  }
+
+  Widget inputField(
+    String label,
+    TextEditingController controller, {
+    TextInputType keyboard = TextInputType.text,
+    bool password = false,
+    int? maxLength,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 15),
+      child: TextField(
+        controller: controller,
+        keyboardType: keyboard,
+        obscureText: password && obscurePassword,
+        maxLength: maxLength,
+        style: const TextStyle(color: Colors.white),
+        decoration: InputDecoration(
+          counterText: '',
+          labelText: label,
+          labelStyle: const TextStyle(color: Colors.white70),
+          border: const OutlineInputBorder(),
+          enabledBorder: OutlineInputBorder(
+            borderSide: BorderSide(color: Colors.grey.shade600),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderSide: BorderSide(color: green),
+          ),
+          suffixIcon: password
+              ? IconButton(
+                  icon: Icon(
+                    obscurePassword
+                        ? Icons.visibility_off
+                        : Icons.visibility,
+                    color: Colors.white70,
+                  ),
+                  onPressed: () {
+                    setState(() {
+                      obscurePassword = !obscurePassword;
+                    });
+                  },
+                )
+              : null,
+        ),
+      ),
+    );
+  }
+
   @override
   void dispose() {
+    nameController.dispose();
     phoneController.dispose();
-    otpController.dispose();
+    emailController.dispose();
+    passwordController.dispose();
+    confirmPasswordController.dispose();
     super.dispose();
   }
 
@@ -113,79 +243,77 @@ class _AuthScreenState extends State<AuthScreen> {
           padding: const EdgeInsets.all(24),
           child: Column(
             children: [
-              const Icon(
+              Icon(
                 Icons.account_balance_wallet,
                 size: 75,
-                color: Color(0xFF17B650),
+                color: green,
               ),
               const SizedBox(height: 15),
-              const Text(
+              Text(
                 'GROW CAPITAL',
                 style: TextStyle(
                   fontSize: 28,
                   fontWeight: FontWeight.bold,
-                  color: Color(0xFF17B650),
+                  color: green,
                 ),
               ),
               const SizedBox(height: 8),
-              const Text(
-                'Login with your mobile number',
-                style: TextStyle(color: Colors.white),
-              ),
-              const SizedBox(height: 35),
-
-              TextField(
-                controller: phoneController,
-                keyboardType: TextInputType.phone,
-                maxLength: 10,
+              Text(
+                isRegister ? 'Create Your Account' : 'Welcome Back',
                 style: const TextStyle(color: Colors.white),
-                decoration: InputDecoration(
-                  counterText: '',
-                  labelText: 'Mobile Number',
-                  labelStyle: const TextStyle(color: Colors.white70),
-                  prefixText: '+91 ',
-                  prefixStyle: const TextStyle(color: Colors.white),
-                  border: const OutlineInputBorder(),
-                  enabledBorder: OutlineInputBorder(
-                    borderSide: BorderSide(color: Colors.grey.shade600),
-                  ),
-                ),
               ),
+              const SizedBox(height: 30),
 
-              if (verificationId != null) ...[
-                const SizedBox(height: 15),
-                TextField(
-                  controller: otpController,
-                  keyboardType: TextInputType.number,
-                  maxLength: 6,
-                  style: const TextStyle(color: Colors.white),
-                  decoration: InputDecoration(
-                    counterText: '',
-                    labelText: 'Enter OTP',
-                    labelStyle: const TextStyle(color: Colors.white70),
-                    border: const OutlineInputBorder(),
-                    enabledBorder: OutlineInputBorder(
-                      borderSide: BorderSide(
-                        color: Colors.grey.shade600,
-                      ),
-                    ),
-                  ),
+              if (isRegister) ...[
+                inputField('Full Name', nameController),
+                inputField(
+                  'Mobile Number',
+                  phoneController,
+                  keyboard: TextInputType.phone,
+                  maxLength: 10,
                 ),
               ],
 
-              const SizedBox(height: 20),
+              inputField(
+                'Gmail Address',
+                emailController,
+                keyboard: TextInputType.emailAddress,
+              ),
+
+              inputField(
+                'Password',
+                passwordController,
+                password: true,
+              ),
+
+              if (isRegister)
+                inputField(
+                  'Confirm Password',
+                  confirmPasswordController,
+                  password: true,
+                ),
+
+              if (!isRegister)
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: TextButton(
+                    onPressed: loading ? null : forgotPassword,
+                    child: Text(
+                      'Forgot Password?',
+                      style: TextStyle(color: green),
+                    ),
+                  ),
+                ),
+
+              const SizedBox(height: 15),
 
               SizedBox(
                 width: double.infinity,
                 height: 52,
                 child: ElevatedButton(
-                  onPressed: loading
-                      ? null
-                      : verificationId == null
-                          ? sendOTP
-                          : verifyOTP,
+                  onPressed: loading ? null : submit,
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF17B650),
+                    backgroundColor: green,
                     foregroundColor: Colors.white,
                   ),
                   child: loading
@@ -193,9 +321,7 @@ class _AuthScreenState extends State<AuthScreen> {
                           color: Colors.white,
                         )
                       : Text(
-                          verificationId == null
-                              ? 'SEND OTP'
-                              : 'VERIFY OTP',
+                          isRegister ? 'REGISTER' : 'LOGIN',
                           style: const TextStyle(
                             fontWeight: FontWeight.bold,
                           ),
@@ -203,7 +329,25 @@ class _AuthScreenState extends State<AuthScreen> {
                 ),
               ),
 
-              const SizedBox(height: 20),
+              const SizedBox(height: 15),
+
+              TextButton(
+                onPressed: loading
+                    ? null
+                    : () {
+                        setState(() {
+                          isRegister = !isRegister;
+                        });
+                      },
+                child: Text(
+                  isRegister
+                      ? 'Already have an account? Login'
+                      : 'New user? Create an account',
+                  style: TextStyle(color: green),
+                ),
+              ),
+
+              const SizedBox(height: 15),
 
               const Text(
                 'Free to join • No deposit required',
