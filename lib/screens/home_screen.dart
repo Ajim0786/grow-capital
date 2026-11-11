@@ -1,6 +1,8 @@
 
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 import 'quiz_screen.dart';
 import 'tasks_screen.dart';
@@ -20,6 +22,31 @@ class _HomeScreenState extends State<HomeScreen> {
   static const Color green = Color(0xFF103D30);
   static const Color accent = Color(0xFF16845C);
   static const Color background = Color(0xFFF3F7F4);
+
+  late Future<bool> adminFuture;
+
+  @override
+  void initState() {
+    super.initState();
+    adminFuture = checkAdmin();
+  }
+
+  Future<bool> checkAdmin() async {
+    final user = FirebaseAuth.instance.currentUser;
+
+    if (user == null) return false;
+
+    try {
+      final doc = await FirebaseFirestore.instance
+          .collection('admins')
+          .doc(user.uid)
+          .get();
+
+      return doc.exists && doc.data()?['role'] == 'admin';
+    } catch (_) {
+      return false;
+    }
+  }
 
   Future<void> openTelegram(String link) async {
     final uri = Uri.parse(link);
@@ -71,6 +98,15 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
+  void openAdmin() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => const AdminScreen(),
+      ),
+    );
+  }
+
   void selectNavigation(int index) {
     setState(() => selectedIndex = index);
 
@@ -92,11 +128,23 @@ class _HomeScreenState extends State<HomeScreen> {
         foregroundColor: Colors.white,
         title: const Text(
           'GROW CAPITAL',
-          style: TextStyle(
-            fontWeight: FontWeight.bold,
-          ),
+          style: TextStyle(fontWeight: FontWeight.bold),
         ),
         actions: [
+          FutureBuilder<bool>(
+            future: adminFuture,
+            builder: (context, snapshot) {
+              if (snapshot.data != true) {
+                return const SizedBox.shrink();
+              }
+
+              return IconButton(
+                tooltip: 'Admin Panel',
+                onPressed: openAdmin,
+                icon: const Icon(Icons.admin_panel_settings),
+              );
+            },
+          ),
           IconButton(
             onPressed: () {},
             icon: const Icon(Icons.notifications_none),
@@ -114,10 +162,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 padding: const EdgeInsets.all(22),
                 decoration: BoxDecoration(
                   gradient: const LinearGradient(
-                    colors: [
-                      green,
-                      Color(0xFF176B50),
-                    ],
+                    colors: [green, Color(0xFF176B50)],
                   ),
                   borderRadius: BorderRadius.circular(22),
                 ),
@@ -126,9 +171,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   children: [
                     Text(
                       'AVAILABLE REWARDS',
-                      style: TextStyle(
-                        color: Colors.white70,
-                      ),
+                      style: TextStyle(color: Colors.white70),
                     ),
                     SizedBox(height: 10),
                     Text(
@@ -142,9 +185,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     SizedBox(height: 8),
                     Text(
                       'Learn • Complete Tasks • Grow',
-                      style: TextStyle(
-                        color: Colors.white70,
-                      ),
+                      style: TextStyle(color: Colors.white70),
                     ),
                     SizedBox(height: 18),
                     Text(
@@ -245,9 +286,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       Icons.account_balance_wallet_outlined,
                       'My Wallet',
                       'Reward History',
-                      () => showMessage(
-                        'Wallet is coming soon',
-                      ),
+                      () => showMessage('Wallet is coming soon'),
                     ),
                   ),
                 ],
@@ -277,9 +316,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   style: ElevatedButton.styleFrom(
                     backgroundColor: green,
                     foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(
-                      vertical: 15,
-                    ),
+                    padding: const EdgeInsets.symmetric(vertical: 15),
                   ),
                 ),
               ),
@@ -293,15 +330,11 @@ class _HomeScreenState extends State<HomeScreen> {
                     'https://t.me/growcapital_support1',
                   ),
                   icon: const Icon(Icons.support_agent),
-                  label: const Text(
-                    'Personal Customer Support',
-                  ),
+                  label: const Text('Personal Customer Support'),
                   style: OutlinedButton.styleFrom(
                     foregroundColor: green,
                     side: const BorderSide(color: green),
-                    padding: const EdgeInsets.symmetric(
-                      vertical: 15,
-                    ),
+                    padding: const EdgeInsets.symmetric(vertical: 15),
                   ),
                 ),
               ),
@@ -325,9 +358,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 decoration: BoxDecoration(
                   color: Colors.white,
                   borderRadius: BorderRadius.circular(16),
-                  border: Border.all(
-                    color: Colors.black12,
-                  ),
+                  border: Border.all(color: Colors.black12),
                 ),
                 child: const Column(
                   mainAxisAlignment: MainAxisAlignment.center,
@@ -340,9 +371,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     SizedBox(height: 7),
                     Text(
                       'Video Advertisement Area',
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                      ),
+                      style: TextStyle(fontWeight: FontWeight.bold),
                     ),
                     SizedBox(height: 4),
                     Text(
@@ -457,11 +486,7 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
           child: Column(
             children: [
-              Icon(
-                icon,
-                size: 32,
-                color: accent,
-              ),
+              Icon(icon, size: 32, color: accent),
               const SizedBox(height: 10),
               Text(
                 title,
@@ -482,6 +507,237 @@ class _HomeScreenState extends State<HomeScreen> {
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+// --------------------------------------------------
+// ADMIN PANEL - CUSTOMER MANAGEMENT
+// --------------------------------------------------
+
+class AdminScreen extends StatelessWidget {
+  const AdminScreen({super.key});
+
+  static const Color green = Color(0xFF103D30);
+
+  String formatDate(dynamic value) {
+    if (value is Timestamp) {
+      final date = value.toDate();
+      return '${date.day}/${date.month}/${date.year}';
+    }
+    return 'Not available';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder<bool>(
+      future: _verifyAdmin(),
+      builder: (context, adminSnapshot) {
+        if (!adminSnapshot.hasData) {
+          return const Scaffold(
+            body: Center(child: CircularProgressIndicator()),
+          );
+        }
+
+        if (adminSnapshot.data != true) {
+          return Scaffold(
+            appBar: AppBar(title: const Text('Admin Panel')),
+            body: const Center(
+              child: Text('Access denied'),
+            ),
+          );
+        }
+
+        return Scaffold(
+          appBar: AppBar(
+            title: const Text('Admin Panel'),
+            backgroundColor: green,
+            foregroundColor: Colors.white,
+          ),
+          body: StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+            stream: FirebaseFirestore.instance
+                .collection('users')
+                .snapshots(),
+            builder: (context, snapshot) {
+              if (snapshot.hasError) {
+                return const Center(
+                  child: Padding(
+                    padding: EdgeInsets.all(20),
+                    child: Text(
+                      'Unable to load customers. Check Firestore Rules.',
+                      textAlign: TextAlign.center,
+                    ),
+                  ),
+                );
+              }
+
+              if (!snapshot.hasData) {
+                return const Center(
+                  child: CircularProgressIndicator(),
+                );
+              }
+
+              final customers = snapshot.data!.docs;
+
+              return Column(
+                children: [
+                  Container(
+                    width: double.infinity,
+                    margin: const EdgeInsets.all(16),
+                    padding: const EdgeInsets.all(20),
+                    decoration: BoxDecoration(
+                      color: green,
+                      borderRadius: BorderRadius.circular(18),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'TOTAL CUSTOMERS',
+                          style: TextStyle(color: Colors.white70),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          '${customers.length}',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 34,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  const Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 16),
+                    child: Align(
+                      alignment: Alignment.centerLeft,
+                      child: Text(
+                        'Customer Management',
+                        style: TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ),
+
+                  const SizedBox(height: 8),
+
+                  Expanded(
+                    child: customers.isEmpty
+                        ? const Center(
+                            child: Text('No customers found'),
+                          )
+                        : ListView.builder(
+                            padding: const EdgeInsets.all(12),
+                            itemCount: customers.length,
+                            itemBuilder: (context, index) {
+                              final data = customers[index].data();
+
+                              final name =
+                                  data['fullName']?.toString() ??
+                                  'Not available';
+
+                              final email =
+                                  data['email']?.toString() ??
+                                  'Not available';
+
+                              final mobile =
+                                  data['mobileNumber']?.toString() ??
+                                  'Not available';
+
+                              final referralCode =
+                                  data['referralCode']?.toString() ??
+                                  'Not available';
+
+                              return Card(
+                                margin: const EdgeInsets.only(bottom: 12),
+                                child: Padding(
+                                  padding: const EdgeInsets.all(14),
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Row(
+                                        children: [
+                                          const CircleAvatar(
+                                            child: Icon(Icons.person),
+                                          ),
+                                          const SizedBox(width: 10),
+                                          Expanded(
+                                            child: Text(
+                                              name,
+                                              style: const TextStyle(
+                                                fontSize: 17,
+                                                fontWeight: FontWeight.bold,
+                                              ),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                      const Divider(height: 24),
+                                      _info('Gmail', email),
+                                      _info('Mobile', mobile),
+                                      _info('Referral Code', referralCode),
+                                      _info(
+                                        'Registration Date',
+                                        formatDate(data['createdAt']),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              );
+                            },
+                          ),
+                  ),
+                ],
+              );
+            },
+          ),
+        );
+      },
+    );
+  }
+
+  Future<bool> _verifyAdmin() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return false;
+
+    try {
+      final doc = await FirebaseFirestore.instance
+          .collection('admins')
+          .doc(user.uid)
+          .get();
+
+      return doc.exists && doc.data()?['role'] == 'admin';
+    } catch (_) {
+      return false;
+    }
+  }
+
+  Widget _info(String title, String value) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 125,
+            child: Text(
+              '$title:',
+              style: const TextStyle(color: Colors.black54),
+            ),
+          ),
+          Expanded(
+            child: Text(
+              value,
+              style: const TextStyle(fontWeight: FontWeight.w500),
+            ),
+          ),
+        ],
       ),
     );
   }
