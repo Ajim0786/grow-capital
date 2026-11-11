@@ -27,6 +27,9 @@ dependencies:
   # Profile Picture
   image_picker: ^1.1.2
 
+  # Referral Share
+  share_plus: ^10.1.4
+
 dev_dependencies:
   flutter_test:
     sdk: flutter
