@@ -17,6 +17,63 @@ class ProfileScreen extends StatelessWidget {
     return 'Not available';
   }
 
+  Future<void> editAddress(
+    BuildContext context,
+    String currentAddress,
+    DocumentReference<Map<String, dynamic>> userDoc,
+  ) async {
+    final controller = TextEditingController(text: currentAddress);
+
+    final newAddress = await showDialog<String>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Update Address'),
+        content: TextField(
+          controller: controller,
+          maxLines: 3,
+          decoration: const InputDecoration(
+            hintText: 'Enter your full address',
+            border: OutlineInputBorder(),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(dialogContext, controller.text.trim());
+            },
+            child: const Text('Save'),
+          ),
+        ],
+      ),
+    );
+
+    controller.dispose();
+
+    if (newAddress == null || newAddress.isEmpty) return;
+
+    try {
+      await userDoc.update({
+        'address': newAddress,
+      });
+
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Address updated successfully')),
+        );
+      }
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Address update failed: $e')),
+        );
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final user = FirebaseAuth.instance.currentUser;
@@ -27,6 +84,9 @@ class ProfileScreen extends StatelessWidget {
       );
     }
 
+    final userDoc =
+        FirebaseFirestore.instance.collection('users').doc(user.uid);
+
     return Scaffold(
       backgroundColor: const Color(0xFFF3F7F4),
       appBar: AppBar(
@@ -35,14 +95,13 @@ class ProfileScreen extends StatelessWidget {
         foregroundColor: Colors.white,
       ),
       body: StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
-        stream: FirebaseFirestore.instance
-            .collection('users')
-            .doc(user.uid)
-            .snapshots(),
+        stream: userDoc.snapshots(),
         builder: (context, snapshot) {
           if (snapshot.hasError) {
             return const Center(
-              child: Text('Unable to load profile. Check connection or permissions.'),
+              child: Text(
+                'Unable to load profile. Check connection or permissions.',
+              ),
             );
           }
 
@@ -52,11 +111,23 @@ class ProfileScreen extends StatelessWidget {
 
           final data = snapshot.data?.data() ?? {};
 
+          final fullName = (data['fullName'] ?? '').toString();
+          final email = (data['email'] ?? user.email ?? '').toString();
+          final mobile = (data['mobileNumber'] ?? '').toString();
+          final referralCode = (data['referralCode'] ?? '').toString();
+          final address = (data['address'] ?? '').toString();
+
+          final isComplete = fullName.isNotEmpty &&
+              email.isNotEmpty &&
+              mobile.isNotEmpty &&
+              address.isNotEmpty;
+
           return SingleChildScrollView(
             padding: const EdgeInsets.all(20),
             child: Column(
               children: [
                 const SizedBox(height: 15),
+
                 const CircleAvatar(
                   radius: 48,
                   backgroundColor: green,
@@ -66,15 +137,18 @@ class ProfileScreen extends StatelessWidget {
                     color: Colors.white,
                   ),
                 ),
+
                 const SizedBox(height: 12),
+
                 Text(
-                  data['fullName'] ?? 'Customer',
+                  fullName.isEmpty ? 'Customer' : fullName,
                   style: const TextStyle(
                     fontSize: 23,
                     fontWeight: FontWeight.bold,
                     color: green,
                   ),
                 ),
+
                 const Text(
                   'GROW CAPITAL MEMBER',
                   style: TextStyle(
@@ -83,33 +157,98 @@ class ProfileScreen extends StatelessWidget {
                     fontSize: 12,
                   ),
                 ),
-                const SizedBox(height: 28),
+
+                const SizedBox(height: 20),
+
+                Card(
+                  child: ListTile(
+                    leading: Icon(
+                      isComplete ? Icons.verified : Icons.info_outline,
+                      color: isComplete ? accent : Colors.orange,
+                    ),
+                    title: const Text(
+                      'Profile Status',
+                      style: TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                    subtitle: Text(
+                      isComplete
+                          ? 'Your profile is complete'
+                          : 'Please add your full address to complete your profile',
+                    ),
+                    trailing: Icon(
+                      isComplete ? Icons.check_circle : Icons.pending,
+                      color: isComplete ? accent : Colors.orange,
+                    ),
+                  ),
+                ),
+
+                const SizedBox(height: 15),
+
                 profileItem(
                   Icons.person_outline,
                   'Full Name',
-                  data['fullName'] ?? 'Not available',
+                  fullName.isEmpty ? 'Not available' : fullName,
                 ),
+
                 profileItem(
                   Icons.email_outlined,
                   'Gmail Address',
-                  data['email'] ?? user.email ?? 'Not available',
+                  email.isEmpty ? 'Not available' : email,
                 ),
+
                 profileItem(
                   Icons.phone_android,
                   'Mobile Number',
-                  data['mobileNumber'] ?? 'Not available',
+                  mobile.isEmpty ? 'Not available' : mobile,
                 ),
+
                 profileItem(
                   Icons.card_giftcard,
                   'Referral Code',
-                  data['referralCode'] ?? 'Not available',
+                  referralCode.isEmpty ? 'Not available' : referralCode,
                 ),
+
+                Card(
+                  margin: const EdgeInsets.only(bottom: 12),
+                  child: ListTile(
+                    leading: const Icon(
+                      Icons.location_on_outlined,
+                      color: accent,
+                    ),
+                    title: const Text(
+                      'Address',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Colors.black54,
+                      ),
+                    ),
+                    subtitle: Text(
+                      address.isEmpty ? 'Add your address' : address,
+                      style: const TextStyle(
+                        fontWeight: FontWeight.bold,
+                        color: green,
+                      ),
+                    ),
+                    trailing: const Icon(
+                      Icons.edit,
+                      color: accent,
+                    ),
+                    onTap: () => editAddress(
+                      context,
+                      address,
+                      userDoc,
+                    ),
+                  ),
+                ),
+
                 profileItem(
                   Icons.calendar_today,
                   'Account Created',
                   formatDate(data['createdAt']),
                 ),
+
                 const SizedBox(height: 25),
+
                 SizedBox(
                   width: double.infinity,
                   height: 50,
