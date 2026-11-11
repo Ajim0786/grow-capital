@@ -33,7 +33,6 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Future<bool> checkAdmin() async {
     final user = FirebaseAuth.instance.currentUser;
-
     if (user == null) return false;
 
     try {
@@ -151,6 +150,7 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ],
       ),
+
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(16),
@@ -512,197 +512,16 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 }
 
-// --------------------------------------------------
-// ADMIN PANEL - CUSTOMER MANAGEMENT
-// --------------------------------------------------
+// ==================================================
+// ADMIN PANEL
+// ==================================================
 
 class AdminScreen extends StatelessWidget {
   const AdminScreen({super.key});
 
   static const Color green = Color(0xFF103D30);
 
-  String formatDate(dynamic value) {
-    if (value is Timestamp) {
-      final date = value.toDate();
-      return '${date.day}/${date.month}/${date.year}';
-    }
-    return 'Not available';
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return FutureBuilder<bool>(
-      future: _verifyAdmin(),
-      builder: (context, adminSnapshot) {
-        if (!adminSnapshot.hasData) {
-          return const Scaffold(
-            body: Center(child: CircularProgressIndicator()),
-          );
-        }
-
-        if (adminSnapshot.data != true) {
-          return Scaffold(
-            appBar: AppBar(title: const Text('Admin Panel')),
-            body: const Center(
-              child: Text('Access denied'),
-            ),
-          );
-        }
-
-        return Scaffold(
-          appBar: AppBar(
-            title: const Text('Admin Panel'),
-            backgroundColor: green,
-            foregroundColor: Colors.white,
-          ),
-          body: StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
-            stream: FirebaseFirestore.instance
-                .collection('users')
-                .snapshots(),
-            builder: (context, snapshot) {
-              if (snapshot.hasError) {
-                return const Center(
-                  child: Padding(
-                    padding: EdgeInsets.all(20),
-                    child: Text(
-                      'Unable to load customers. Check Firestore Rules.',
-                      textAlign: TextAlign.center,
-                    ),
-                  ),
-                );
-              }
-
-              if (!snapshot.hasData) {
-                return const Center(
-                  child: CircularProgressIndicator(),
-                );
-              }
-
-              final customers = snapshot.data!.docs;
-
-              return Column(
-                children: [
-                  Container(
-                    width: double.infinity,
-                    margin: const EdgeInsets.all(16),
-                    padding: const EdgeInsets.all(20),
-                    decoration: BoxDecoration(
-                      color: green,
-                      borderRadius: BorderRadius.circular(18),
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text(
-                          'TOTAL CUSTOMERS',
-                          style: TextStyle(color: Colors.white70),
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          '${customers.length}',
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 34,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-
-                  const Padding(
-                    padding: EdgeInsets.symmetric(horizontal: 16),
-                    child: Align(
-                      alignment: Alignment.centerLeft,
-                      child: Text(
-                        'Customer Management',
-                        style: TextStyle(
-                          fontSize: 20,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
-                  ),
-
-                  const SizedBox(height: 8),
-
-                  Expanded(
-                    child: customers.isEmpty
-                        ? const Center(
-                            child: Text('No customers found'),
-                          )
-                        : ListView.builder(
-                            padding: const EdgeInsets.all(12),
-                            itemCount: customers.length,
-                            itemBuilder: (context, index) {
-                              final data = customers[index].data();
-
-                              final name =
-                                  data['fullName']?.toString() ??
-                                  'Not available';
-
-                              final email =
-                                  data['email']?.toString() ??
-                                  'Not available';
-
-                              final mobile =
-                                  data['mobileNumber']?.toString() ??
-                                  'Not available';
-
-                              final referralCode =
-                                  data['referralCode']?.toString() ??
-                                  'Not available';
-
-                              return Card(
-                                margin: const EdgeInsets.only(bottom: 12),
-                                child: Padding(
-                                  padding: const EdgeInsets.all(14),
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Row(
-                                        children: [
-                                          const CircleAvatar(
-                                            child: Icon(Icons.person),
-                                          ),
-                                          const SizedBox(width: 10),
-                                          Expanded(
-                                            child: Text(
-                                              name,
-                                              style: const TextStyle(
-                                                fontSize: 17,
-                                                fontWeight: FontWeight.bold,
-                                              ),
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                      const Divider(height: 24),
-                                      _info('Gmail', email),
-                                      _info('Mobile', mobile),
-                                      _info('Referral Code', referralCode),
-                                      _info(
-                                        'Registration Date',
-                                        formatDate(data['createdAt']),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              );
-                            },
-                          ),
-                  ),
-                ],
-              );
-            },
-          ),
-        );
-      },
-    );
-  }
-
-  Future<bool> _verifyAdmin() async {
+  Future<bool> verifyAdmin() async {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) return false;
 
@@ -718,6 +537,421 @@ class AdminScreen extends StatelessWidget {
     }
   }
 
+  String formatDate(dynamic value) {
+    if (value is Timestamp) {
+      final date = value.toDate();
+      return '${date.day}/${date.month}/${date.year}';
+    }
+    return 'Not available';
+  }
+
+  Future<void> updateReferral(
+    BuildContext context,
+    String memberId,
+    String status,
+  ) async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
+
+    try {
+      await FirebaseFirestore.instance
+          .collection('users')
+          .doc(memberId)
+          .update({
+        'referralStatus': status,
+        'referralVerifiedBy': user.uid,
+        'referralVerifiedAt': FieldValue.serverTimestamp(),
+      });
+
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              status == 'verified'
+                  ? 'Referral verified successfully'
+                  : 'Referral rejected',
+            ),
+          ),
+        );
+      }
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Update failed: $e')),
+        );
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder<bool>(
+      future: verifyAdmin(),
+      builder: (context, adminSnapshot) {
+        if (!adminSnapshot.hasData) {
+          return const Scaffold(
+            body: Center(child: CircularProgressIndicator()),
+          );
+        }
+
+        if (adminSnapshot.data != true) {
+          return Scaffold(
+            appBar: AppBar(title: const Text('Admin Panel')),
+            body: const Center(child: Text('Access denied')),
+          );
+        }
+
+        return DefaultTabController(
+          length: 2,
+          child: Scaffold(
+            appBar: AppBar(
+              title: const Text('Admin Panel'),
+              backgroundColor: green,
+              foregroundColor: Colors.white,
+              bottom: const TabBar(
+                labelColor: Colors.white,
+                unselectedLabelColor: Colors.white70,
+                tabs: [
+                  Tab(
+                    icon: Icon(Icons.people),
+                    text: 'Customers',
+                  ),
+                  Tab(
+                    icon: Icon(Icons.verified_user),
+                    text: 'Referrals',
+                  ),
+                ],
+              ),
+            ),
+            body: StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+              stream: FirebaseFirestore.instance
+                  .collection('users')
+                  .snapshots(),
+              builder: (context, snapshot) {
+                if (snapshot.hasError) {
+                  return const Center(
+                    child: Text(
+                      'Unable to load data. Check Firestore Rules.',
+                    ),
+                  );
+                }
+
+                if (!snapshot.hasData) {
+                  return const Center(
+                    child: CircularProgressIndicator(),
+                  );
+                }
+
+                final customers = snapshot.data!.docs;
+
+                final referrals = customers.where((doc) {
+                  final data = doc.data();
+                  return data['referredByUid'] != null &&
+                      data['referredByUid'].toString().isNotEmpty;
+                }).toList();
+
+                final pending = referrals.where((doc) {
+                  final status = doc.data()['referralStatus'];
+                  return status != 'verified' &&
+                      status != 'rejected';
+                }).toList();
+
+                final verified = referrals.where((doc) {
+                  return doc.data()['referralStatus'] == 'verified';
+                }).length;
+
+                return TabBarView(
+                  children: [
+                    // CUSTOMER MANAGEMENT
+
+                    Column(
+                      children: [
+                        _summaryCard(
+                          'TOTAL CUSTOMERS',
+                          '${customers.length}',
+                        ),
+                        Expanded(
+                          child: customers.isEmpty
+                              ? const Center(
+                                  child: Text('No customers found'),
+                                )
+                              : ListView.builder(
+                                  padding: const EdgeInsets.all(12),
+                                  itemCount: customers.length,
+                                  itemBuilder: (context, index) {
+                                    final data =
+                                        customers[index].data();
+
+                                    return Card(
+                                      margin: const EdgeInsets.only(
+                                        bottom: 12,
+                                      ),
+                                      child: Padding(
+                                        padding: const EdgeInsets.all(14),
+                                        child: Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
+                                          children: [
+                                            Text(
+                                              data['fullName']
+                                                      ?.toString() ??
+                                                  'Not available',
+                                              style: const TextStyle(
+                                                fontSize: 18,
+                                                fontWeight:
+                                                    FontWeight.bold,
+                                              ),
+                                            ),
+                                            const Divider(),
+                                            _info(
+                                              'Gmail',
+                                              data['email']?.toString() ??
+                                                  'Not available',
+                                            ),
+                                            _info(
+                                              'Mobile',
+                                              data['mobileNumber']
+                                                      ?.toString() ??
+                                                  'Not available',
+                                            ),
+                                            _info(
+                                              'Referral Code',
+                                              data['referralCode']
+                                                      ?.toString() ??
+                                                  'Not available',
+                                            ),
+                                            _info(
+                                              'Registration Date',
+                                              formatDate(
+                                                data['createdAt'],
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    );
+                                  },
+                                ),
+                        ),
+                      ],
+                    ),
+
+                    // REFERRAL VERIFICATION
+
+                    Column(
+                      children: [
+                        Row(
+                          children: [
+                            Expanded(
+                              child: _smallSummary(
+                                'Total Referrals',
+                                '${referrals.length}',
+                              ),
+                            ),
+                            Expanded(
+                              child: _smallSummary(
+                                'Pending',
+                                '${pending.length}',
+                              ),
+                            ),
+                            Expanded(
+                              child: _smallSummary(
+                                'Verified',
+                                '$verified',
+                              ),
+                            ),
+                          ],
+                        ),
+                        Expanded(
+                          child: pending.isEmpty
+                              ? const Center(
+                                  child: Text(
+                                    'No pending referrals',
+                                    style: TextStyle(fontSize: 16),
+                                  ),
+                                )
+                              : ListView.builder(
+                                  padding: const EdgeInsets.all(12),
+                                  itemCount: pending.length,
+                                  itemBuilder: (context, index) {
+                                    final doc = pending[index];
+                                    final data = doc.data();
+
+                                    final name =
+                                        data['fullName']?.toString() ??
+                                            'Not available';
+
+                                    final code =
+                                        data['referredByCode']?.toString() ??
+                                            'Not available';
+
+                                    final referrerUid =
+                                        data['referredByUid']?.toString() ??
+                                            '';
+
+                                    return Card(
+                                      margin: const EdgeInsets.only(
+                                        bottom: 12,
+                                      ),
+                                      child: Padding(
+                                        padding: const EdgeInsets.all(14),
+                                        child: Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
+                                          children: [
+                                            Text(
+                                              name,
+                                              style: const TextStyle(
+                                                fontSize: 17,
+                                                fontWeight:
+                                                    FontWeight.bold,
+                                              ),
+                                            ),
+                                            const SizedBox(height: 8),
+                                            _info(
+                                              'Gmail',
+                                              data['email']?.toString() ??
+                                                  'Not available',
+                                            ),
+                                            _info(
+                                              'Used Code',
+                                              code,
+                                            ),
+                                            _info(
+                                              'Referrer UID',
+                                              referrerUid,
+                                            ),
+                                            _info(
+                                              'Joined',
+                                              formatDate(
+                                                data['createdAt'],
+                                              ),
+                                            ),
+                                            const SizedBox(height: 12),
+                                            Row(
+                                              children: [
+                                                Expanded(
+                                                  child: ElevatedButton(
+                                                    onPressed: () =>
+                                                        updateReferral(
+                                                      context,
+                                                      doc.id,
+                                                      'verified',
+                                                    ),
+                                                    style: ElevatedButton
+                                                        .styleFrom(
+                                                      backgroundColor:
+                                                          Colors.green,
+                                                      foregroundColor:
+                                                          Colors.white,
+                                                    ),
+                                                    child: const Text(
+                                                      'Verify',
+                                                    ),
+                                                  ),
+                                                ),
+                                                const SizedBox(width: 10),
+                                                Expanded(
+                                                  child: ElevatedButton(
+                                                    onPressed: () =>
+                                                        updateReferral(
+                                                      context,
+                                                      doc.id,
+                                                      'rejected',
+                                                    ),
+                                                    style: ElevatedButton
+                                                        .styleFrom(
+                                                      backgroundColor:
+                                                          Colors.red,
+                                                      foregroundColor:
+                                                          Colors.white,
+                                                    ),
+                                                    child: const Text(
+                                                      'Reject',
+                                                    ),
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    );
+                                  },
+                                ),
+                        ),
+                      ],
+                    ),
+                  ],
+                );
+              },
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _summaryCard(String title, String value) {
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: green,
+        borderRadius: BorderRadius.circular(18),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            title,
+            style: const TextStyle(color: Colors.white70),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            value,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 32,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _smallSummary(String title, String value) {
+    return Card(
+      margin: const EdgeInsets.all(5),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(
+          vertical: 16,
+          horizontal: 5,
+        ),
+        child: Column(
+          children: [
+            Text(
+              value,
+              style: const TextStyle(
+                fontSize: 22,
+                fontWeight: FontWeight.bold,
+                color: green,
+              ),
+            ),
+            const SizedBox(height: 5),
+            Text(
+              title,
+              textAlign: TextAlign.center,
+              style: const TextStyle(fontSize: 11),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _info(String title, String value) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
@@ -725,7 +959,7 @@ class AdminScreen extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           SizedBox(
-            width: 125,
+            width: 115,
             child: Text(
               '$title:',
               style: const TextStyle(color: Colors.black54),
