@@ -1,13 +1,26 @@
 
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_storage/firebase_storage.dart';
+import 'package:image_picker/image_picker.dart';
 
-class ProfileScreen extends StatelessWidget {
+class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
 
+  @override
+  State<ProfileScreen> createState() => _ProfileScreenState();
+}
+
+class _ProfileScreenState extends State<ProfileScreen> {
   static const Color green = Color(0xFF103D30);
   static const Color accent = Color(0xFF16845C);
+
+  bool uploading = false;
+
+  final ImagePicker picker = ImagePicker();
 
   String formatDate(dynamic value) {
     if (value is Timestamp) {
@@ -17,12 +30,77 @@ class ProfileScreen extends StatelessWidget {
     return 'Not available';
   }
 
+  Future<void> uploadProfilePicture(
+    BuildContext context,
+    String uid,
+  ) async {
+    try {
+      final XFile? pickedImage = await picker.pickImage(
+        source: ImageSource.gallery,
+        imageQuality: 75,
+        maxWidth: 800,
+      );
+
+      if (pickedImage == null) return;
+
+      setState(() {
+        uploading = true;
+      });
+
+      final file = File(pickedImage.path);
+
+      final storageRef = FirebaseStorage.instance
+          .ref()
+          .child('profile_pictures')
+          .child(uid)
+          .child('profile.jpg');
+
+      await storageRef.putFile(
+        file,
+        SettableMetadata(contentType: 'image/jpeg'),
+      );
+
+      final imageUrl = await storageRef.getDownloadURL();
+
+      await FirebaseFirestore.instance
+          .collection('users')
+          .doc(uid)
+          .set({
+        'photoUrl': imageUrl,
+      }, SetOptions(merge: true));
+
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Profile picture updated successfully'),
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Picture upload failed: $e'),
+        ),
+      );
+    } finally {
+      if (mounted) {
+        setState(() {
+          uploading = false;
+        });
+      }
+    }
+  }
+
   Future<void> editAddress(
     BuildContext context,
     String currentAddress,
-    DocumentReference<Map<String, dynamic>> userDoc,
+    String uid,
   ) async {
-    final controller = TextEditingController(text: currentAddress);
+    final controller = TextEditingController(
+      text: currentAddress,
+    );
 
     final newAddress = await showDialog<String>(
       context: context,
@@ -43,7 +121,10 @@ class ProfileScreen extends StatelessWidget {
           ),
           ElevatedButton(
             onPressed: () {
-              Navigator.pop(dialogContext, controller.text.trim());
+              Navigator.pop(
+                dialogContext,
+                controller.text.trim(),
+              );
             },
             child: const Text('Save'),
           ),
@@ -56,21 +137,28 @@ class ProfileScreen extends StatelessWidget {
     if (newAddress == null || newAddress.isEmpty) return;
 
     try {
-      await userDoc.update({
+      await FirebaseFirestore.instance
+          .collection('users')
+          .doc(uid)
+          .update({
         'address': newAddress,
       });
 
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Address updated successfully')),
-        );
-      }
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Address updated successfully'),
+        ),
+      );
     } catch (e) {
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Address update failed: $e')),
-        );
-      }
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Address update failed: $e'),
+        ),
+      );
     }
   }
 
@@ -80,12 +168,15 @@ class ProfileScreen extends StatelessWidget {
 
     if (user == null) {
       return const Scaffold(
-        body: Center(child: Text('Please login again')),
+        body: Center(
+          child: Text('Please login again'),
+        ),
       );
     }
 
-    final userDoc =
-        FirebaseFirestore.instance.collection('users').doc(user.uid);
+    final userDoc = FirebaseFirestore.instance
+        .collection('users')
+        .doc(user.uid);
 
     return Scaffold(
       backgroundColor: const Color(0xFFF3F7F4),
@@ -99,23 +190,35 @@ class ProfileScreen extends StatelessWidget {
         builder: (context, snapshot) {
           if (snapshot.hasError) {
             return const Center(
-              child: Text(
-                'Unable to load profile. Check connection or permissions.',
-              ),
+              child: Text('Unable to load profile.'),
             );
           }
 
           if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
+            return const Center(
+              child: CircularProgressIndicator(),
+            );
           }
 
           final data = snapshot.data?.data() ?? {};
 
-          final fullName = (data['fullName'] ?? '').toString();
-          final email = (data['email'] ?? user.email ?? '').toString();
-          final mobile = (data['mobileNumber'] ?? '').toString();
-          final referralCode = (data['referralCode'] ?? '').toString();
-          final address = (data['address'] ?? '').toString();
+          final fullName =
+              (data['fullName'] ?? user.displayName ?? '').toString();
+
+          final email =
+              (data['email'] ?? user.email ?? '').toString();
+
+          final mobile =
+              (data['mobileNumber'] ?? '').toString();
+
+          final referralCode =
+              (data['referralCode'] ?? '').toString();
+
+          final address =
+              (data['address'] ?? '').toString();
+
+          final photoUrl =
+              (data['photoUrl'] ?? user.photoURL ?? '').toString();
 
           final isComplete = fullName.isNotEmpty &&
               email.isNotEmpty &&
@@ -128,15 +231,54 @@ class ProfileScreen extends StatelessWidget {
               children: [
                 const SizedBox(height: 15),
 
-                const CircleAvatar(
-                  radius: 48,
-                  backgroundColor: green,
-                  child: Icon(
-                    Icons.person,
-                    size: 55,
-                    color: Colors.white,
-                  ),
+                // Profile Picture
+                Stack(
+                  alignment: Alignment.bottomRight,
+                  children: [
+                    CircleAvatar(
+                      radius: 58,
+                      backgroundColor: green,
+                      backgroundImage: photoUrl.isNotEmpty
+                          ? NetworkImage(photoUrl)
+                          : null,
+                      child: photoUrl.isEmpty
+                          ? const Icon(
+                              Icons.person,
+                              size: 65,
+                              color: Colors.white,
+                            )
+                          : null,
+                    ),
+                    Material(
+                      color: accent,
+                      shape: const CircleBorder(),
+                      child: InkWell(
+                        customBorder: const CircleBorder(),
+                        onTap: uploading
+                            ? null
+                            : () => uploadProfilePicture(
+                                  context,
+                                  user.uid,
+                                ),
+                        child: const Padding(
+                          padding: EdgeInsets.all(9),
+                          child: Icon(
+                            Icons.camera_alt,
+                            color: Colors.white,
+                            size: 21,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
+
+                if (uploading) ...[
+                  const SizedBox(height: 12),
+                  const CircularProgressIndicator(),
+                  const SizedBox(height: 5),
+                  const Text('Uploading picture...'),
+                ],
 
                 const SizedBox(height: 12),
 
@@ -158,31 +300,32 @@ class ProfileScreen extends StatelessWidget {
                   ),
                 ),
 
-                const SizedBox(height: 20),
+                const SizedBox(height: 25),
 
+                // Profile Status
                 Card(
                   child: ListTile(
                     leading: Icon(
-                      isComplete ? Icons.verified : Icons.info_outline,
-                      color: isComplete ? accent : Colors.orange,
+                      isComplete
+                          ? Icons.verified
+                          : Icons.info_outline,
+                      color: isComplete
+                          ? accent
+                          : Colors.orange,
                     ),
                     title: const Text(
                       'Profile Status',
-                      style: TextStyle(fontWeight: FontWeight.bold),
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                     subtitle: Text(
                       isComplete
                           ? 'Your profile is complete'
-                          : 'Please add your full address to complete your profile',
-                    ),
-                    trailing: Icon(
-                      isComplete ? Icons.check_circle : Icons.pending,
-                      color: isComplete ? accent : Colors.orange,
+                          : 'Please complete your profile',
                     ),
                   ),
                 ),
-
-                const SizedBox(height: 15),
 
                 profileItem(
                   Icons.person_outline,
@@ -205,9 +348,12 @@ class ProfileScreen extends StatelessWidget {
                 profileItem(
                   Icons.card_giftcard,
                   'Referral Code',
-                  referralCode.isEmpty ? 'Not available' : referralCode,
+                  referralCode.isEmpty
+                      ? 'Not available'
+                      : referralCode,
                 ),
 
+                // Address
                 Card(
                   margin: const EdgeInsets.only(bottom: 12),
                   child: ListTile(
@@ -223,7 +369,9 @@ class ProfileScreen extends StatelessWidget {
                       ),
                     ),
                     subtitle: Text(
-                      address.isEmpty ? 'Add your address' : address,
+                      address.isEmpty
+                          ? 'Add your address'
+                          : address,
                       style: const TextStyle(
                         fontWeight: FontWeight.bold,
                         color: green,
@@ -236,7 +384,7 @@ class ProfileScreen extends StatelessWidget {
                     onTap: () => editAddress(
                       context,
                       address,
-                      userDoc,
+                      user.uid,
                     ),
                   ),
                 ),
@@ -249,6 +397,7 @@ class ProfileScreen extends StatelessWidget {
 
                 const SizedBox(height: 25),
 
+                // Logout
                 SizedBox(
                   width: double.infinity,
                   height: 50,
@@ -300,7 +449,11 @@ class ProfileScreen extends StatelessWidget {
     );
   }
 
-  Widget profileItem(IconData icon, String title, String value) {
+  Widget profileItem(
+    IconData icon,
+    String title,
+    String value,
+  ) {
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
       child: ListTile(
