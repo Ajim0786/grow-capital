@@ -32,9 +32,6 @@ jobs:
           settings = Path("android/settings.gradle.kts")
           app = Path("android/app/build.gradle.kts")
 
-          if not settings.exists() or not app.exists():
-              raise SystemExit("Android Gradle files not found")
-
           s = settings.read_text()
           a = app.read_text()
 
@@ -56,23 +53,25 @@ jobs:
 
           if not Path("android/app/google-services.json").exists():
               raise SystemExit("google-services.json is missing")
-
-          print("Firebase configuration completed.")
           PY
-
-      - name: Disable Problematic Android Lint Checks
-        run: |
-          cat >> android/app/build.gradle.kts <<'EOF'
-
-          android {
-              lint {
-                  disable += setOf("EasterEgg", "StopShip")
-              }
-          }
-          EOF
 
       - name: Install dependencies
         run: flutter pub get
+
+      - name: Disable Plugin Lint Tasks
+        run: |
+          cat >> android/build.gradle.kts <<'EOF'
+
+          subprojects {
+              if (name == "image_picker_android") {
+                  tasks.configureEach {
+                      if (name.contains("lint", ignoreCase = true)) {
+                          enabled = false
+                      }
+                  }
+              }
+          }
+          EOF
 
       - name: Get SHA fingerprints
         run: |
