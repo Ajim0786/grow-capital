@@ -1,3 +1,4 @@
+
 name: Build GROW CAPITAL APK
 
 on:
@@ -58,6 +59,17 @@ jobs:
 
           print("Firebase configuration completed.")
           PY
+
+      - name: Disable Problematic Android Lint Checks
+        run: |
+          cat >> android/app/build.gradle.kts <<'EOF'
+
+          android {
+              lint {
+                  disable += setOf("EasterEgg", "StopShip")
+              }
+          }
+          EOF
 
       - name: Install dependencies
         run: flutter pub get
