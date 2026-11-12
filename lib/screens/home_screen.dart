@@ -8,6 +8,7 @@ import 'quiz_screen.dart';
 import 'tasks_screen.dart';
 import 'referral_screen.dart';
 import 'profile_screen.dart';
+import 'wallet_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -97,6 +98,15 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
+  void openWallet() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => const WalletScreen(),
+      ),
+    );
+  }
+
   void openAdmin() {
     Navigator.push(
       context,
@@ -112,7 +122,7 @@ class _HomeScreenState extends State<HomeScreen> {
     if (index == 1) {
       openTasks();
     } else if (index == 2) {
-      showMessage('Wallet is coming soon');
+      openWallet();
     } else if (index == 3) {
       openProfile();
     }
@@ -150,7 +160,6 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ],
       ),
-
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(16),
@@ -286,7 +295,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       Icons.account_balance_wallet_outlined,
                       'My Wallet',
                       'Reward History',
-                      () => showMessage('Wallet is coming soon'),
+                      openWallet,
                     ),
                   ),
                 ],
@@ -432,7 +441,6 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ),
       ),
-
       bottomNavigationBar: NavigationBar(
         selectedIndex: selectedIndex,
         onDestinationSelected: selectNavigation,
@@ -662,8 +670,6 @@ class AdminScreen extends StatelessWidget {
 
                 return TabBarView(
                   children: [
-                    // CUSTOMER MANAGEMENT
-
                     Column(
                       children: [
                         _summaryCard(
@@ -735,8 +741,6 @@ class AdminScreen extends StatelessWidget {
                         ),
                       ],
                     ),
-
-                    // REFERRAL VERIFICATION
 
                     Column(
                       children: [
@@ -813,10 +817,7 @@ class AdminScreen extends StatelessWidget {
                                               data['email']?.toString() ??
                                                   'Not available',
                                             ),
-                                            _info(
-                                              'Used Code',
-                                              code,
-                                            ),
+                                            _info('Used Code', code),
                                             _info(
                                               'Referrer UID',
                                               referrerUid,
