@@ -55,23 +55,21 @@ jobs:
               raise SystemExit("google-services.json is missing")
           PY
 
-      - name: Install dependencies
-        run: flutter pub get
-
-      - name: Disable Plugin Lint Tasks
+      - name: Disable Android Subproject Lint Tasks
         run: |
           cat >> android/build.gradle.kts <<'EOF'
 
           subprojects {
-              if (name == "image_picker_android") {
-                  tasks.configureEach {
-                      if (name.contains("lint", ignoreCase = true)) {
-                          enabled = false
-                      }
+              tasks.configureEach {
+                  if (name.contains("lint", ignoreCase = true)) {
+                      enabled = false
                   }
               }
           }
           EOF
+
+      - name: Install dependencies
+        run: flutter pub get
 
       - name: Get SHA fingerprints
         run: |
