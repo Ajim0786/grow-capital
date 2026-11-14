@@ -15,7 +15,7 @@ class _WalletScreenState extends State<WalletScreen> {
   static const Color accent = Color(0xFF16845C);
   static const Color background = Color(0xFFF3F7F4);
 
-  bool requestStarted = false;
+  bool isSubmitting = false;
   String? requestError;
 
   String money(dynamic value) {
@@ -28,15 +28,24 @@ class _WalletScreenState extends State<WalletScreen> {
   @override
   void initState() {
     super.initState();
-    createWelcomeBonusRequest();
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      createWelcomeBonusRequest();
+    });
   }
 
+  // CREATE ONE-TIME WELCOME BONUS REQUEST
   Future<void> createWelcomeBonusRequest() async {
-    if (requestStarted) return;
-    requestStarted = true;
+    if (isSubmitting) return;
 
     final user = FirebaseAuth.instance.currentUser;
+
     if (user == null) return;
+
+    setState(() {
+      isSubmitting = true;
+      requestError = null;
+    });
 
     final db = FirebaseFirestore.instance;
     final bonusRef =
@@ -46,29 +55,33 @@ class _WalletScreenState extends State<WalletScreen> {
       await db.runTransaction((transaction) async {
         final existing = await transaction.get(bonusRef);
 
+        // Existing request means no duplicate request.
         if (existing.exists) return;
 
         transaction.set(bonusRef, {
           'uid': user.uid,
-          'fullName': user.displayName ?? 'Customer',
-          'email': user.email ?? '',
           'amount': 50,
           'status': 'pending',
           'createdAt': FieldValue.serverTimestamp(),
         });
       });
-
+    } on FirebaseException catch (e) {
       if (mounted) {
         setState(() {
-          requestError = null;
+          requestError =
+              'Request failed: ${e.code} - ${e.message ?? ''}';
         });
       }
     } catch (e) {
       if (mounted) {
         setState(() {
-          requestError =
-              'Could not submit Welcome Bonus request. '
-              'Please check your internet connection and Firestore Rules.';
+          requestError = 'Request failed: $e';
+        });
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          isSubmitting = false;
         });
       }
     }
@@ -87,7 +100,10 @@ class _WalletScreenState extends State<WalletScreen> {
     }
 
     final db = FirebaseFirestore.instance;
-    final walletRef = db.collection('wallets').doc(user.uid);
+
+    final walletRef =
+        db.collection('wallets').doc(user.uid);
+
     final bonusRef =
         db.collection('bonus_requests').doc(user.uid);
 
@@ -96,7 +112,9 @@ class _WalletScreenState extends State<WalletScreen> {
       appBar: AppBar(
         title: const Text(
           'My Wallet',
-          style: TextStyle(fontWeight: FontWeight.bold),
+          style: TextStyle(
+            fontWeight: FontWeight.bold,
+          ),
         ),
         backgroundColor: green,
         foregroundColor: Colors.white,
@@ -105,15 +123,9 @@ class _WalletScreenState extends State<WalletScreen> {
         stream: walletRef.snapshots(),
         builder: (context, walletSnapshot) {
           if (walletSnapshot.hasError) {
-            return const Center(
-              child: Padding(
-                padding: EdgeInsets.all(24),
-                child: Text(
-                  'Unable to load wallet data. '
-                  'Please check Firestore Rules.',
-                  textAlign: TextAlign.center,
-                ),
-              ),
+            return errorView(
+              'Unable to load wallet data. '
+              'Please check your Firestore Rules.',
             );
           }
 
@@ -123,24 +135,20 @@ class _WalletScreenState extends State<WalletScreen> {
             );
           }
 
-          final walletData = walletSnapshot.data!.data() ?? {};
+          final walletData =
+              walletSnapshot.data!.data() ?? {};
 
           final balance = walletData['balance'] ?? 0;
           final earned = walletData['totalEarned'] ?? 0;
 
-          return StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
+          return StreamBuilder<
+              DocumentSnapshot<Map<String, dynamic>>>(
             stream: bonusRef.snapshots(),
             builder: (context, bonusSnapshot) {
               if (bonusSnapshot.hasError) {
-                return const Center(
-                  child: Padding(
-                    padding: EdgeInsets.all(24),
-                    child: Text(
-                      'Unable to load Welcome Bonus status. '
-                      'Please check Firestore Rules.',
-                      textAlign: TextAlign.center,
-                    ),
-                  ),
+                return errorView(
+                  'Unable to load Welcome Bonus status. '
+                  'Please check Firestore Rules.',
                 );
               }
 
@@ -150,17 +158,25 @@ class _WalletScreenState extends State<WalletScreen> {
                 );
               }
 
-              final bonusExists = bonusSnapshot.data!.exists;
-              final bonusData = bonusSnapshot.data!.data() ?? {};
+              final bonusExists =
+                  bonusSnapshot.data!.exists;
+
+              final bonusData =
+                  bonusSnapshot.data!.data() ?? {};
+
               final bonusStatus =
-                  bonusData['status']?.toString() ?? 'not_requested';
+                  bonusData['status']?.toString() ??
+                      'not_requested';
 
               final pendingBonus =
-                  bonusStatus == 'pending' ? 50.0 : 0.0;
+                  bonusExists && bonusStatus == 'pending'
+                      ? 50
+                      : 0;
 
               return ListView(
                 padding: const EdgeInsets.all(16),
                 children: [
+                  // AVAILABLE BALANCE
                   Container(
                     padding: const EdgeInsets.all(24),
                     decoration: BoxDecoration(
@@ -173,7 +189,8 @@ class _WalletScreenState extends State<WalletScreen> {
                       borderRadius: BorderRadius.circular(22),
                     ),
                     child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+                      crossAxisAlignment:
+                          CrossAxisAlignment.start,
                       children: [
                         const Text(
                           'AVAILABLE BALANCE',
@@ -194,7 +211,9 @@ class _WalletScreenState extends State<WalletScreen> {
                         const SizedBox(height: 8),
                         const Text(
                           'Your approved rewards',
-                          style: TextStyle(color: Colors.white70),
+                          style: TextStyle(
+                            color: Colors.white70,
+                          ),
                         ),
                         const SizedBox(height: 18),
                         const Text(
@@ -211,6 +230,7 @@ class _WalletScreenState extends State<WalletScreen> {
 
                   const SizedBox(height: 16),
 
+                  // WALLET SUMMARY
                   Row(
                     children: [
                       Expanded(
@@ -244,12 +264,15 @@ class _WalletScreenState extends State<WalletScreen> {
 
                   const SizedBox(height: 10),
 
+                  // WELCOME BONUS CARD
                   Card(
                     color: Colors.white,
+                    elevation: 2,
                     child: Padding(
                       padding: const EdgeInsets.all(16),
                       child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
+                        crossAxisAlignment:
+                            CrossAxisAlignment.start,
                         children: [
                           const Row(
                             children: [
@@ -270,7 +293,9 @@ class _WalletScreenState extends State<WalletScreen> {
                               ),
                             ],
                           ),
+
                           const SizedBox(height: 12),
+
                           Text(
                             bonusMessage(
                               bonusStatus,
@@ -281,18 +306,34 @@ class _WalletScreenState extends State<WalletScreen> {
                               height: 1.5,
                             ),
                           ),
+
                           const SizedBox(height: 12),
+
                           statusBadge(
                             bonusStatus,
                             bonusExists,
                           ),
+
+                          if (isSubmitting) ...[
+                            const SizedBox(height: 12),
+                            const LinearProgressIndicator(),
+                            const SizedBox(height: 6),
+                            const Text(
+                              'Submitting request...',
+                              style: TextStyle(
+                                color: Colors.black54,
+                                fontSize: 12,
+                              ),
+                            ),
+                          ],
                         ],
                       ),
                     ),
                   ),
 
+                  // REQUEST ERROR AND RETRY
                   if (requestError != null) ...[
-                    const SizedBox(height: 10),
+                    const SizedBox(height: 12),
                     Text(
                       requestError!,
                       style: const TextStyle(
@@ -300,8 +341,11 @@ class _WalletScreenState extends State<WalletScreen> {
                         fontSize: 12,
                       ),
                     ),
+                    const SizedBox(height: 6),
                     TextButton.icon(
-                      onPressed: createWelcomeBonusRequest,
+                      onPressed: isSubmitting
+                          ? null
+                          : createWelcomeBonusRequest,
                       icon: const Icon(Icons.refresh),
                       label: const Text('Retry request'),
                     ),
@@ -309,6 +353,7 @@ class _WalletScreenState extends State<WalletScreen> {
 
                   const SizedBox(height: 24),
 
+                  // TRANSACTION HISTORY
                   const Text(
                     'Transaction History',
                     style: TextStyle(
@@ -320,7 +365,8 @@ class _WalletScreenState extends State<WalletScreen> {
 
                   const SizedBox(height: 10),
 
-                  StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+                  StreamBuilder<
+                      QuerySnapshot<Map<String, dynamic>>>(
                     stream: walletRef
                         .collection('transactions')
                         .orderBy(
@@ -355,7 +401,9 @@ class _WalletScreenState extends State<WalletScreen> {
                           child: Padding(
                             padding: EdgeInsets.all(20),
                             child: Center(
-                              child: Text('No transactions yet'),
+                              child: Text(
+                                'No transactions yet',
+                              ),
                             ),
                           ),
                         );
@@ -365,24 +413,32 @@ class _WalletScreenState extends State<WalletScreen> {
                         children: transactions.map((doc) {
                           final item = doc.data();
 
-                          final amount = item['amount'] ?? 0;
+                          final amount =
+                              item['amount'] ?? 0;
+
                           final title =
-                              item['title']?.toString() ?? 'Reward';
+                              item['title']?.toString() ??
+                                  'Reward';
+
                           final status =
-                              item['status']?.toString() ?? 'pending';
+                              item['status']?.toString() ??
+                                  'pending';
 
                           return Card(
                             color: Colors.white,
                             child: ListTile(
                               leading: const CircleAvatar(
-                                backgroundColor: Color(0xFFE3F3EB),
+                                backgroundColor:
+                                    Color(0xFFE3F3EB),
                                 child: Icon(
                                   Icons.account_balance_wallet,
                                   color: accent,
                                 ),
                               ),
                               title: Text(title),
-                              subtitle: Text(status.toUpperCase()),
+                              subtitle: Text(
+                                status.toUpperCase(),
+                              ),
                               trailing: Text(
                                 '₹${money(amount)}',
                                 style: const TextStyle(
@@ -399,6 +455,7 @@ class _WalletScreenState extends State<WalletScreen> {
 
                   const SizedBox(height: 24),
 
+                  // WITHDRAWAL INFORMATION
                   Container(
                     padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
@@ -423,9 +480,10 @@ class _WalletScreenState extends State<WalletScreen> {
                         ),
                         SizedBox(height: 8),
                         Text(
-                          'Bank Account and PhonePe UPI withdrawal '
-                          'will be available after the secure payout '
-                          'and Admin approval system is configured.',
+                          'Bank Account and PhonePe UPI '
+                          'withdrawal will be available after '
+                          'the secure payout and Admin approval '
+                          'system is configured.',
                           textAlign: TextAlign.center,
                           style: TextStyle(
                             color: Colors.black54,
@@ -447,34 +505,40 @@ class _WalletScreenState extends State<WalletScreen> {
     );
   }
 
+  // BONUS MESSAGE
   String bonusMessage(String status, bool exists) {
     if (!exists) {
-      return 'Your ₹50 Welcome Bonus request is being prepared.';
+      return 'Your ₹50 Welcome Bonus request has not '
+          'been submitted yet.';
     }
 
     switch (status) {
       case 'pending':
-        return 'Your ₹50 Welcome Bonus request has been submitted. '
-            'It will be added to your available balance only after '
-            'Admin approval.';
+        return 'Your ₹50 Welcome Bonus request has been '
+            'submitted. It will be added to your available '
+            'balance only after Admin approval.';
+
       case 'approved':
-        return 'Your Welcome Bonus has been approved and added to '
-            'your available balance.';
+        return 'Your Welcome Bonus has been approved. '
+            'Please check your available balance.';
+
       case 'rejected':
         return 'Your Welcome Bonus request was rejected. '
             'Please contact customer support if you need help.';
+
       default:
         return 'Welcome Bonus status: $status';
     }
   }
 
+  // BONUS STATUS BADGE
   Widget statusBadge(String status, bool exists) {
     String label;
     Color color;
     IconData icon;
 
     if (!exists) {
-      label = 'Preparing request';
+      label = 'Request not submitted';
       color = Colors.blue;
       icon = Icons.hourglass_empty;
     } else if (status == 'pending') {
@@ -497,7 +561,11 @@ class _WalletScreenState extends State<WalletScreen> {
 
     return Row(
       children: [
-        Icon(icon, color: color, size: 19),
+        Icon(
+          icon,
+          color: color,
+          size: 19,
+        ),
         const SizedBox(width: 7),
         Expanded(
           child: Text(
@@ -513,6 +581,7 @@ class _WalletScreenState extends State<WalletScreen> {
     );
   }
 
+  // STATISTICS CARD
   Widget statCard(
     String title,
     String value,
@@ -520,6 +589,7 @@ class _WalletScreenState extends State<WalletScreen> {
   ) {
     return Card(
       color: Colors.white,
+      elevation: 2,
       child: Padding(
         padding: const EdgeInsets.all(15),
         child: Column(
@@ -548,6 +618,23 @@ class _WalletScreenState extends State<WalletScreen> {
               ),
             ),
           ],
+        ),
+      ),
+    );
+  }
+
+  // ERROR VIEW
+  Widget errorView(String message) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Text(
+          message,
+          textAlign: TextAlign.center,
+          style: const TextStyle(
+            color: Colors.red,
+            fontSize: 14,
+          ),
         ),
       ),
     );
