@@ -17,10 +17,12 @@ class ProfileScreen extends StatefulWidget {
 class _ProfileScreenState extends State<ProfileScreen> {
   static const Color green = Color(0xFF103D30);
   static const Color accent = Color(0xFF16845C);
-
-  bool uploading = false;
+  static const Color background = Color(0xFFF3F7F4);
 
   final ImagePicker picker = ImagePicker();
+
+  bool uploading = false;
+  bool savingAddress = false;
 
   String formatDate(dynamic value) {
     if (value is Timestamp) {
@@ -30,10 +32,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
     return 'Not available';
   }
 
-  Future<void> uploadProfilePicture(
-    BuildContext context,
-    String uid,
-  ) async {
+  void showMessage(String message) {
+    if (!mounted) return;
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message)),
+    );
+  }
+
+  Future<void> uploadProfilePicture(String uid) async {
+    if (uploading) return;
+
     try {
       final XFile? pickedImage = await picker.pickImage(
         source: ImageSource.gallery,
@@ -43,9 +52,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
       if (pickedImage == null) return;
 
-      setState(() {
-        uploading = true;
-      });
+      setState(() => uploading = true);
 
       final file = File(pickedImage.path);
 
@@ -65,38 +72,23 @@ class _ProfileScreenState extends State<ProfileScreen> {
       await FirebaseFirestore.instance
           .collection('users')
           .doc(uid)
-          .set({
+          .update({
         'photoUrl': imageUrl,
-      }, SetOptions(merge: true));
+      });
 
-      if (!mounted) return;
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Profile picture updated successfully'),
-        ),
-      );
+      showMessage('Profile picture updated successfully');
     } catch (e) {
-      if (!mounted) return;
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Picture upload failed: $e'),
-        ),
-      );
+      showMessage('Picture upload failed. Check Storage Rules.');
     } finally {
       if (mounted) {
-        setState(() {
-          uploading = false;
-        });
+        setState(() => uploading = false);
       }
     }
   }
 
   Future<void> editAddress(
-    BuildContext context,
-    String currentAddress,
     String uid,
+    String currentAddress,
   ) async {
     final controller = TextEditingController(
       text: currentAddress,
@@ -108,9 +100,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
         title: const Text('Update Address'),
         content: TextField(
           controller: controller,
-          maxLines: 3,
+          maxLines: 4,
+          maxLength: 250,
           decoration: const InputDecoration(
-            hintText: 'Enter your full address',
+            hintText: 'House, Street, Village, District, State, PIN',
             border: OutlineInputBorder(),
           ),
         ),
@@ -134,9 +127,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
     controller.dispose();
 
-    if (newAddress == null || newAddress.isEmpty) return;
+    if (newAddress == null) return;
+
+    if (newAddress.isEmpty) {
+      showMessage('Please enter your full address');
+      return;
+    }
 
     try {
+      setState(() => savingAddress = true);
+
       await FirebaseFirestore.instance
           .collection('users')
           .doc(uid)
@@ -144,21 +144,39 @@ class _ProfileScreenState extends State<ProfileScreen> {
         'address': newAddress,
       });
 
-      if (!mounted) return;
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Address updated successfully'),
-        ),
-      );
+      showMessage('Address updated successfully');
     } catch (e) {
-      if (!mounted) return;
+      showMessage('Address update failed. Check Firestore Rules.');
+    } finally {
+      if (mounted) {
+        setState(() => savingAddress = false);
+      }
+    }
+  }
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Address update failed: $e'),
+  Future<void> logout() async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Logout'),
+        content: const Text(
+          'Are you sure you want to logout?',
         ),
-      );
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            child: const Text('Logout'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm == true) {
+      await FirebaseAuth.instance.signOut();
     }
   }
 
@@ -168,9 +186,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
     if (user == null) {
       return const Scaffold(
-        body: Center(
-          child: Text('Please login again'),
-        ),
+        body: Center(child: Text('Please login again')),
       );
     }
 
@@ -179,9 +195,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
         .doc(user.uid);
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF3F7F4),
+      backgroundColor: background,
       appBar: AppBar(
-        title: const Text('My Profile'),
+        title: const Text(
+          'My Profile',
+          style: TextStyle(fontWeight: FontWeight.bold),
+        ),
         backgroundColor: green,
         foregroundColor: Colors.white,
       ),
@@ -220,10 +239,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
           final photoUrl =
               (data['photoUrl'] ?? user.photoURL ?? '').toString();
 
-          final isComplete = fullName.isNotEmpty &&
-              email.isNotEmpty &&
-              mobile.isNotEmpty &&
-              address.isNotEmpty;
+          final isComplete = fullName.trim().isNotEmpty &&
+              email.trim().isNotEmpty &&
+              mobile.trim().isNotEmpty &&
+              address.trim().isNotEmpty;
 
           return SingleChildScrollView(
             padding: const EdgeInsets.all(20),
@@ -231,7 +250,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               children: [
                 const SizedBox(height: 15),
 
-                // Profile Picture
+                // PROFILE PHOTO
                 Stack(
                   alignment: Alignment.bottomRight,
                   children: [
@@ -256,10 +275,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         customBorder: const CircleBorder(),
                         onTap: uploading
                             ? null
-                            : () => uploadProfilePicture(
-                                  context,
-                                  user.uid,
-                                ),
+                            : () => uploadProfilePicture(user.uid),
                         child: const Padding(
                           padding: EdgeInsets.all(9),
                           child: Icon(
@@ -276,7 +292,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 if (uploading) ...[
                   const SizedBox(height: 12),
                   const CircularProgressIndicator(),
-                  const SizedBox(height: 5),
+                  const SizedBox(height: 6),
                   const Text('Uploading picture...'),
                 ],
 
@@ -302,27 +318,30 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
                 const SizedBox(height: 25),
 
-                // Profile Status
+                // PROFILE COMPLETION
                 Card(
                   child: ListTile(
                     leading: Icon(
                       isComplete
                           ? Icons.verified
                           : Icons.info_outline,
-                      color: isComplete
-                          ? accent
-                          : Colors.orange,
+                      color: isComplete ? accent : Colors.orange,
                     ),
                     title: const Text(
                       'Profile Status',
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                      ),
+                      style: TextStyle(fontWeight: FontWeight.bold),
                     ),
                     subtitle: Text(
                       isComplete
                           ? 'Your profile is complete'
-                          : 'Please complete your profile',
+                          : 'Please complete your profile by adding your address',
+                    ),
+                    trailing: Text(
+                      isComplete ? '100%' : 'Incomplete',
+                      style: TextStyle(
+                        color: isComplete ? accent : Colors.orange,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                   ),
                 ),
@@ -353,7 +372,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       : referralCode,
                 ),
 
-                // Address
+                // ADDRESS
                 Card(
                   margin: const EdgeInsets.only(bottom: 12),
                   child: ListTile(
@@ -369,23 +388,24 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       ),
                     ),
                     subtitle: Text(
-                      address.isEmpty
-                          ? 'Add your address'
-                          : address,
+                      address.isEmpty ? 'Add your address' : address,
                       style: const TextStyle(
                         fontWeight: FontWeight.bold,
                         color: green,
                       ),
                     ),
-                    trailing: const Icon(
-                      Icons.edit,
-                      color: accent,
-                    ),
-                    onTap: () => editAddress(
-                      context,
-                      address,
-                      user.uid,
-                    ),
+                    trailing: savingAddress
+                        ? const SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                            ),
+                          )
+                        : const Icon(Icons.edit, color: accent),
+                    onTap: savingAddress
+                        ? null
+                        : () => editAddress(user.uid, address),
                   ),
                 ),
 
@@ -397,42 +417,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
                 const SizedBox(height: 25),
 
-                // Logout
+                // LOGOUT
                 SizedBox(
                   width: double.infinity,
                   height: 50,
                   child: ElevatedButton.icon(
-                    onPressed: () async {
-                      final confirm = await showDialog<bool>(
-                        context: context,
-                        builder: (dialogContext) => AlertDialog(
-                          title: const Text('Logout'),
-                          content: const Text(
-                            'Are you sure you want to logout?',
-                          ),
-                          actions: [
-                            TextButton(
-                              onPressed: () => Navigator.pop(
-                                dialogContext,
-                                false,
-                              ),
-                              child: const Text('Cancel'),
-                            ),
-                            TextButton(
-                              onPressed: () => Navigator.pop(
-                                dialogContext,
-                                true,
-                              ),
-                              child: const Text('Logout'),
-                            ),
-                          ],
-                        ),
-                      );
-
-                      if (confirm == true) {
-                        await FirebaseAuth.instance.signOut();
-                      }
-                    },
+                    onPressed: logout,
                     icon: const Icon(Icons.logout),
                     label: const Text('LOGOUT'),
                     style: ElevatedButton.styleFrom(
@@ -441,6 +431,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     ),
                   ),
                 ),
+
+                const SizedBox(height: 20),
               ],
             ),
           );
