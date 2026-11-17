@@ -10,6 +10,7 @@ import 'referral_screen.dart';
 import 'profile_screen.dart';
 import 'wallet_screen.dart';
 import 'admin_screen.dart';
+import 'support_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -81,13 +82,19 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   void openQuiz() => openPage(const QuizScreen());
+
   void openTasks() => openPage(const TasksScreen());
+
   void openReferral() => openPage(const ReferralScreen());
+
   void openProfile() => openPage(const ProfileScreen());
+
   void openWallet() => openPage(const WalletScreen());
 
-  // const removed to avoid the previous build error
-  void openAdmin() => openPage(AdminScreen());
+  void openAdmin() => openPage(const AdminScreen());
+
+  // CUSTOMER SUPPORT
+  void openSupport() => openPage(const SupportScreen());
 
   void selectNavigation(int index) {
     setState(() {
@@ -107,12 +114,15 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: background,
+
       appBar: AppBar(
         backgroundColor: green,
         foregroundColor: Colors.white,
         title: const Text(
           'GROW CAPITAL',
-          style: TextStyle(fontWeight: FontWeight.bold),
+          style: TextStyle(
+            fontWeight: FontWeight.bold,
+          ),
         ),
         actions: [
           FutureBuilder<bool>(
@@ -125,28 +135,38 @@ class _HomeScreenState extends State<HomeScreen> {
               return IconButton(
                 tooltip: 'Admin Panel',
                 onPressed: openAdmin,
-                icon: const Icon(Icons.admin_panel_settings),
+                icon: const Icon(
+                  Icons.admin_panel_settings,
+                ),
               );
             },
           ),
           IconButton(
-            onPressed: () => showMessage('No new notifications'),
+            onPressed: () {
+              showMessage('No new notifications');
+            },
             icon: const Icon(Icons.notifications_none),
           ),
         ],
       ),
+
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(16),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+
+              // AVAILABLE REWARDS
               Container(
                 width: double.infinity,
                 padding: const EdgeInsets.all(22),
                 decoration: BoxDecoration(
                   gradient: const LinearGradient(
-                    colors: [green, Color(0xFF176B50)],
+                    colors: [
+                      green,
+                      Color(0xFF176B50),
+                    ],
                   ),
                   borderRadius: BorderRadius.circular(22),
                 ),
@@ -155,7 +175,9 @@ class _HomeScreenState extends State<HomeScreen> {
                   children: [
                     Text(
                       'AVAILABLE REWARDS',
-                      style: TextStyle(color: Colors.white70),
+                      style: TextStyle(
+                        color: Colors.white70,
+                      ),
                     ),
                     SizedBox(height: 10),
                     Text(
@@ -169,7 +191,9 @@ class _HomeScreenState extends State<HomeScreen> {
                     SizedBox(height: 8),
                     Text(
                       'Learn • Complete Tasks • Grow',
-                      style: TextStyle(color: Colors.white70),
+                      style: TextStyle(
+                        color: Colors.white70,
+                      ),
                     ),
                     SizedBox(height: 18),
                     Text(
@@ -183,7 +207,10 @@ class _HomeScreenState extends State<HomeScreen> {
                   ],
                 ),
               ),
+
               const SizedBox(height: 18),
+
+              // PREMIUM
               Container(
                 width: double.infinity,
                 padding: const EdgeInsets.all(17),
@@ -202,7 +229,9 @@ class _HomeScreenState extends State<HomeScreen> {
                       ),
                     ),
                     SizedBox(height: 6),
-                    Text('Optional membership • ₹49/month'),
+                    Text(
+                      'Optional membership • ₹49/month',
+                    ),
                     SizedBox(height: 5),
                     Text(
                       'Free access and withdrawal remain available.',
@@ -214,7 +243,10 @@ class _HomeScreenState extends State<HomeScreen> {
                   ],
                 ),
               ),
+
               const SizedBox(height: 24),
+
+              // ACTIVITIES
               const Text(
                 'Explore Activities',
                 style: TextStyle(
@@ -223,7 +255,9 @@ class _HomeScreenState extends State<HomeScreen> {
                   color: green,
                 ),
               ),
+
               const SizedBox(height: 13),
+
               Row(
                 children: [
                   Expanded(
@@ -245,7 +279,9 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                 ],
               ),
+
               const SizedBox(height: 12),
+
               Row(
                 children: [
                   Expanded(
@@ -267,7 +303,45 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                 ],
               ),
+
               const SizedBox(height: 24),
+
+              // CUSTOMER SUPPORT BUTTON
+              const Text(
+                'Need Help?',
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: green,
+                ),
+              ),
+
+              const SizedBox(height: 12),
+
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton.icon(
+                  onPressed: openSupport,
+                  icon: const Icon(Icons.support_agent),
+                  label: const Text(
+                    'Help & Support / Submit Complaint',
+                  ),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: green,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(
+                      vertical: 16,
+                    ),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                  ),
+                ),
+              ),
+
+              const SizedBox(height: 24),
+
+              // TELEGRAM
               const Text(
                 'Telegram Community',
                 style: TextStyle(
@@ -276,7 +350,9 @@ class _HomeScreenState extends State<HomeScreen> {
                   color: green,
                 ),
               ),
+
               const SizedBox(height: 12),
+
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton.icon(
@@ -288,11 +364,15 @@ class _HomeScreenState extends State<HomeScreen> {
                   style: ElevatedButton.styleFrom(
                     backgroundColor: green,
                     foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(vertical: 15),
+                    padding: const EdgeInsets.symmetric(
+                      vertical: 15,
+                    ),
                   ),
                 ),
               ),
+
               const SizedBox(height: 10),
+
               SizedBox(
                 width: double.infinity,
                 child: OutlinedButton.icon(
@@ -300,15 +380,22 @@ class _HomeScreenState extends State<HomeScreen> {
                     'https://t.me/growcapital_support1',
                   ),
                   icon: const Icon(Icons.support_agent),
-                  label: const Text('Personal Customer Support'),
+                  label: const Text(
+                    'Personal Customer Support',
+                  ),
                   style: OutlinedButton.styleFrom(
                     foregroundColor: green,
                     side: const BorderSide(color: green),
-                    padding: const EdgeInsets.symmetric(vertical: 15),
+                    padding: const EdgeInsets.symmetric(
+                      vertical: 15,
+                    ),
                   ),
                 ),
               ),
+
               const SizedBox(height: 24),
+
+              // VIDEO ADVERTISEMENT
               const Text(
                 'Video Advertisement',
                 style: TextStyle(
@@ -317,14 +404,18 @@ class _HomeScreenState extends State<HomeScreen> {
                   color: green,
                 ),
               ),
+
               const SizedBox(height: 10),
+
               Container(
                 width: double.infinity,
                 height: 125,
                 decoration: BoxDecoration(
                   color: Colors.white,
                   borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: Colors.black12),
+                  border: Border.all(
+                    color: Colors.black12,
+                  ),
                 ),
                 child: const Column(
                   mainAxisAlignment: MainAxisAlignment.center,
@@ -337,7 +428,9 @@ class _HomeScreenState extends State<HomeScreen> {
                     SizedBox(height: 7),
                     Text(
                       'Video Advertisement Area',
-                      style: TextStyle(fontWeight: FontWeight.bold),
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                     SizedBox(height: 4),
                     Text(
@@ -350,7 +443,10 @@ class _HomeScreenState extends State<HomeScreen> {
                   ],
                 ),
               ),
+
               const SizedBox(height: 24),
+
+              // IMPORTANT INFORMATION
               Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
@@ -380,7 +476,9 @@ class _HomeScreenState extends State<HomeScreen> {
                   ],
                 ),
               ),
+
               const SizedBox(height: 20),
+
               const Center(
                 child: Text(
                   'GROW CAPITAL • Learn • Engage • Grow',
@@ -394,6 +492,8 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ),
       ),
+
+      // BOTTOM NAVIGATION
       bottomNavigationBar: NavigationBar(
         selectedIndex: selectedIndex,
         onDestinationSelected: selectNavigation,
@@ -419,6 +519,7 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
+  // ACTIVITY CARD
   Widget activityCard(
     IconData icon,
     String title,
@@ -441,7 +542,11 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
           child: Column(
             children: [
-              Icon(icon, size: 32, color: accent),
+              Icon(
+                icon,
+                size: 32,
+                color: accent,
+              ),
               const SizedBox(height: 10),
               Text(
                 title,
